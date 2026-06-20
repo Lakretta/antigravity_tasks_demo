@@ -72,6 +72,14 @@ def main():
                 "Calendar view integration",
                 "Collaborative shared lists with email invites"
             ]
+        elif question_id == 'feature_selection_v3':
+            next_q_id = 'feature_selection_v4'
+            next_q_text = "Which capability would you like Antigravity to build next?"
+            next_options = [
+                "Calendar view integration",
+                "Collaborative shared lists with email invites",
+                "Recurring tasks (Daily, Weekly, Monthly)"
+            ]
         elif question_id == 'feature_selection_v5':
             next_q_id = 'feature_selection_v6'
             next_q_text = "What productivity enhancement would you like Antigravity to implement next?"

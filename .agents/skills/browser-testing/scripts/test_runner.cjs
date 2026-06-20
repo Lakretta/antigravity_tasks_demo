@@ -54,84 +54,63 @@ const artifactsDir = getArg('--artifacts-dir') || '/home/vlad/.gemini/antigravit
     });
     await new Promise(r => setTimeout(r, 2000));
 
-    // 1. Add Parent Task
-    console.log("Adding parent task...");
+    // 1. Add Task 1
+    console.log("Adding first task...");
     await page.waitForSelector('input[placeholder="Add a task"]', { timeout: 5000 });
-    await page.type('input[placeholder="Add a task"]', 'Parent Task Test');
+    await page.type('input[placeholder="Add a task"]', 'Tag Test Task');
     await page.keyboard.press('Enter');
     await new Promise(r => setTimeout(r, 1500));
 
-    // 2. Open Subtask inline creation input
-    console.log("Clicking add subtask button...");
-    await page.waitForSelector('button[data-testid="add-subtask-btn"]', { timeout: 5000 });
-    await page.click('button[data-testid="add-subtask-btn"]');
+    // 2. Open Edit Details panel for Task 1
+    console.log("Opening edit details panel...");
+    await page.waitForSelector('button[data-testid="edit-details-btn"]', { timeout: 5000 });
+    await page.click('button[data-testid="edit-details-btn"]');
     
-    // 3. Add Subtask
-    console.log("Adding subtask...");
-    await page.waitForSelector('input[placeholder="Add a subtask"]', { timeout: 5000 });
-    await page.type('input[placeholder="Add a subtask"]', 'Subtask Test');
+    // 3. Add Tag 'Work' and 'Urgent'
+    console.log("Adding tag 'Work'...");
+    await page.waitForSelector('input[data-testid="tag-input"]', { timeout: 5000 });
+    await page.type('input[data-testid="tag-input"]', 'Work');
+    await page.keyboard.press('Enter');
+    await new Promise(r => setTimeout(r, 1000));
+
+    console.log("Adding tag 'Urgent'...");
+    await page.type('input[data-testid="tag-input"]', 'Urgent');
     await page.keyboard.press('Enter');
     await new Promise(r => setTimeout(r, 1500));
 
-    const screenshot1 = path.join(artifactsDir, 'test_step_1_subtask_created.png');
+    const screenshot1 = path.join(artifactsDir, 'test_step_1_tags_added.png');
     console.log(`Saving Step 1 screenshot: ${screenshot1}`);
     await page.screenshot({ path: screenshot1 });
 
-    // 4. Try to click parent task complete checkbox (expect warning)
-    console.log("Attempting to complete parent task (should block)...");
-    await page.evaluate(() => {
-      // Find parent task row (first task row) and click its checkbox button
-      const taskRows = document.querySelectorAll('div[data-testid="task-row"]');
-      for (const row of taskRows) {
-        if (row.textContent.includes('Parent Task Test')) {
-          row.querySelector('button').click();
-          break;
-        }
-      }
-    });
+    // Close details tray
+    await page.click('button[data-testid="edit-details-btn"]');
     await new Promise(r => setTimeout(r, 1000));
 
-    // Check if blocker warning is visible
-    console.log("Verifying blocker warning banner is displayed...");
-    await page.waitForSelector('div[data-testid="blocker-warning"]', { timeout: 5000 });
+    // 4. Add Task 2 (no tags)
+    console.log("Adding second task (untagged)...");
+    await page.type('input[placeholder="Add a task"]', 'Untagged Task');
+    await page.keyboard.press('Enter');
+    await new Promise(r => setTimeout(r, 1500));
 
-    const screenshot2 = path.join(artifactsDir, 'test_step_2_blocker_warning.png');
+    // 5. Click tag filter button 'Urgent'
+    console.log("Clicking 'Urgent' tag filter...");
+    await page.waitForSelector('button[data-testid="tag-filter-Urgent"]', { timeout: 5000 });
+    await page.click('button[data-testid="tag-filter-Urgent"]');
+    await new Promise(r => setTimeout(r, 1500));
+
+    const screenshot2 = path.join(artifactsDir, 'test_step_2_tag_filtered.png');
     console.log(`Saving Step 2 screenshot: ${screenshot2}`);
     await page.screenshot({ path: screenshot2 });
 
-    // 5. Complete Subtask first
-    console.log("Completing the subtask...");
-    await page.evaluate(() => {
-      const taskRows = document.querySelectorAll('div[data-testid="task-row"]');
-      for (const row of taskRows) {
-        if (row.textContent.includes('Subtask Test')) {
-          row.querySelector('button').click();
-          break;
-        }
-      }
-    });
+    // 6. Clear tag filter
+    console.log("Clearing tag filter...");
+    await page.waitForSelector('button[data-testid="tag-filter-All"]', { timeout: 5000 });
+    await page.click('button[data-testid="tag-filter-All"]');
     await new Promise(r => setTimeout(r, 1500));
 
-    const screenshot3 = path.join(artifactsDir, 'test_step_3_subtask_completed.png');
+    const screenshot3 = path.join(artifactsDir, 'test_step_3_filter_cleared.png');
     console.log(`Saving Step 3 screenshot: ${screenshot3}`);
     await page.screenshot({ path: screenshot3 });
-
-    // 6. Complete Parent Task (should now succeed)
-    console.log("Completing the parent task (should now succeed)...");
-    await page.evaluate(() => {
-      const taskRows = document.querySelectorAll('div[data-testid="task-row"]');
-      for (const row of taskRows) {
-        if (row.textContent.includes('Parent Task Test')) {
-          row.querySelector('button').click();
-          break;
-        }
-      }
-    });
-    await new Promise(r => setTimeout(r, 1500));
-
-    const screenshot4 = path.join(artifactsDir, 'test_step_4_parent_completed.png');
-    console.log(`Saving Step 4 screenshot: ${screenshot4}`);
-    await page.screenshot({ path: screenshot4 });
 
     // Delete tasks to clean up
     console.log("Cleaning up...");
@@ -143,7 +122,7 @@ const artifactsDir = getArg('--artifacts-dir') || '/home/vlad/.gemini/antigravit
     });
     await new Promise(r => setTimeout(r, 1500));
 
-    console.log("Browser E2E testing for Subtask dependency completed successfully.");
+    console.log("Browser E2E testing for Tags completed successfully.");
   } catch (error) {
     console.error("Browser testing failed:", error);
     process.exit(1);

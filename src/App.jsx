@@ -63,6 +63,10 @@ function App() {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [blockerWarning, setBlockerWarning] = useState({ parentTitle: '', show: false });
 
+  // Tag states
+  const [selectedTagFilter, setSelectedTagFilter] = useState(null);
+  const [newTagInputs, setNewTagInputs] = useState({});
+
   // Initialize theme
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -281,6 +285,48 @@ function App() {
     }
   };
 
+  // Dynamic HSL Tag Color Generator
+  const getTagColor = (tagName) => {
+    let hash = 0;
+    for (let i = 0; i < tagName.length; i++) {
+      hash = tagName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash % 360);
+    return {
+      bg: `hsl(${h}, 70%, 94%)`,
+      text: `hsl(${h}, 70%, 25%)`,
+      border: `hsl(${h}, 70%, 82%)`
+    };
+  };
+
+  const handleAddTag = async (task, tagName) => {
+    if (!tagName.trim()) return;
+    const cleanTag = tagName.trim();
+    const currentTags = task.tags || [];
+    if (currentTags.includes(cleanTag)) return;
+    
+    try {
+      await saveTask({
+        ...task,
+        tags: [...currentTags, cleanTag]
+      });
+    } catch (err) {
+      console.error('Failed to add tag:', err);
+    }
+  };
+
+  const handleRemoveTag = async (task, tagName) => {
+    const currentTags = task.tags || [];
+    try {
+      await saveTask({
+        ...task,
+        tags: currentTags.filter(t => t !== tagName)
+      });
+    } catch (err) {
+      console.error('Failed to remove tag:', err);
+    }
+  };
+
   // List Handlers
   const handleAddList = async (e) => {
     e.preventDefault();
@@ -353,8 +399,27 @@ function App() {
     }
   };
 
+  const allTagsInList = Array.from(new Set(tasks.flatMap(t => t.tags || []))).sort();
+
   const activeParentTasks = tasks.filter(t => !t.completed && (!t.parentId || !tasks.some(p => p.id === t.parentId)));
   const completedParentTasks = tasks.filter(t => t.completed && (!t.parentId || !tasks.some(p => p.id === t.parentId)));
+
+  const filteredActiveParentTasks = activeParentTasks.filter(task => {
+    if (!selectedTagFilter) return true;
+    const hasTag = task.tags && task.tags.includes(selectedTagFilter);
+    const subtasks = tasks.filter(t => t.parentId === task.id);
+    const subtaskHasTag = subtasks.some(s => s.tags && s.tags.includes(selectedTagFilter));
+    return hasTag || subtaskHasTag;
+  });
+
+  const filteredCompletedParentTasks = completedParentTasks.filter(task => {
+    if (!selectedTagFilter) return true;
+    const hasTag = task.tags && task.tags.includes(selectedTagFilter);
+    const subtasks = tasks.filter(t => t.parentId === task.id);
+    const subtaskHasTag = subtasks.some(s => s.tags && s.tags.includes(selectedTagFilter));
+    return hasTag || subtaskHasTag;
+  });
+
   const activeList = lists.find(l => l.id === activeListId);
 
   // AI Sidebar computations
@@ -550,6 +615,63 @@ function App() {
           </h1>
         </div>
 
+        {/* Tag Filter Bar */}
+        {allTagsInList.length > 0 && (
+          <div 
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '20px',
+              overflowX: 'auto',
+              paddingBottom: '6px',
+              flexWrap: 'wrap'
+            }} 
+            className="scroller"
+          >
+            <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>Filter by tag:</span>
+            <button
+              data-testid="tag-filter-All"
+              onClick={() => setSelectedTagFilter(null)}
+              style={{
+                fontSize: '12px',
+                padding: '4px 12px',
+                borderRadius: '16px',
+                backgroundColor: selectedTagFilter === null ? 'var(--color-brand)' : 'var(--bg-tertiary)',
+                color: selectedTagFilter === null ? '#fff' : 'var(--text-primary)',
+                fontWeight: '500',
+                border: '1px solid ' + (selectedTagFilter === null ? 'var(--color-brand)' : 'var(--border-color)'),
+                cursor: 'pointer'
+              }}
+            >
+              All
+            </button>
+            {allTagsInList.map(tag => {
+              const colors = getTagColor(tag);
+              const isSelected = selectedTagFilter === tag;
+              return (
+                <button
+                  key={tag}
+                  data-testid={`tag-filter-${tag}`}
+                  onClick={() => setSelectedTagFilter(isSelected ? null : tag)}
+                  style={{
+                    fontSize: '12px',
+                    padding: '4px 12px',
+                    borderRadius: '16px',
+                    backgroundColor: isSelected ? 'var(--color-brand)' : colors.bg,
+                    color: isSelected ? '#fff' : colors.text,
+                    border: '1px solid ' + (isSelected ? 'var(--color-brand)' : colors.border),
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* New Task Entry */}
         <form onSubmit={handleAddTask} style={{
           display: 'flex',
@@ -595,7 +717,7 @@ function App() {
 
         {/* Active Tasks Section */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '32px' }}>
-          {activeParentTasks.map(task => {
+          {filteredActiveParentTasks.map(task => {
             const isOverdue = (() => {
               if (!task.dueDate || !task.dueTime) return false;
               const [y, m, d] = task.dueDate.split('-').map(Number);
@@ -604,10 +726,11 @@ function App() {
               return new Date() > due;
             })();
 
-            const parentSubtasks = tasks.filter(t => t.parentId === task.id);
-            const totalSubtasks = parentSubtasks.length;
-            const completedSubtasksCount = parentSubtasks.filter(s => s.completed).length;
-            const hasIncompleteSubtasks = parentSubtasks.some(s => !s.completed);
+            const parentSubtasks = tasks.filter(t => t.parentId === task.id && (!selectedTagFilter || (t.tags && t.tags.includes(selectedTagFilter)) || (task.tags && task.tags.includes(selectedTagFilter))));
+            const unfilteredSubtasks = tasks.filter(t => t.parentId === task.id);
+            const totalSubtasks = unfilteredSubtasks.length;
+            const completedSubtasksCount = unfilteredSubtasks.filter(s => s.completed).length;
+            const hasIncompleteSubtasks = unfilteredSubtasks.some(s => !s.completed);
 
             return (
               <div key={task.id} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -670,9 +793,27 @@ function App() {
                           fontWeight: '600'
                         }}>
                           {hasIncompleteSubtasks ? <AlertTriangle size={10} /> : <Check size={10} />}
-                          {completedSubtasksCount}/{totalSubtasks} subtasks
                         </span>
                       )}
+                      {task.tags && task.tags.map(tag => {
+                        const colors = getTagColor(tag);
+                        return (
+                          <span key={tag} style={{
+                            fontSize: '11px',
+                            color: colors.text,
+                            backgroundColor: colors.bg,
+                            border: `1px solid ${colors.border}`,
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            marginTop: '4px',
+                            fontWeight: '500'
+                          }}>
+                            {tag}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                   
@@ -753,6 +894,70 @@ function App() {
                         }}
                       />
                     </div>
+                    {/* Tag Editor */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start', flex: 1 }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>Tags</label>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        {task.tags && task.tags.map(t => {
+                          const colors = getTagColor(t);
+                          return (
+                            <span key={t} style={{
+                              fontSize: '10px',
+                              color: colors.text,
+                              backgroundColor: colors.bg,
+                              border: `1px solid ${colors.border}`,
+                              padding: '1px 6px',
+                              borderRadius: '10px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              {t}
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveTag(task, t)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'var(--text-tertiary)',
+                                  width: '12px',
+                                  height: '12px',
+                                  fontSize: '10px',
+                                  lineHeight: 1
+                                }}
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <input 
+                        type="text" 
+                        placeholder="Add a tag..."
+                        data-testid="tag-input"
+                        value={newTagInputs[task.id] || ''}
+                        onChange={(e) => setNewTagInputs({ ...newTagInputs, [task.id]: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddTag(task, e.target.value);
+                            setNewTagInputs({ ...newTagInputs, [task.id]: '' });
+                          }
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          fontSize: '12.5px',
+                          outline: 'none',
+                          width: '100%'
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -797,23 +1002,44 @@ function App() {
                               }}>
                                 {subtask.title}
                               </span>
-                              {subtask.dueDate && (
-                                <span style={{ 
-                                  fontSize: '10px', 
-                                  color: isSubtaskOverdue ? '#ea4335' : 'var(--text-secondary)',
-                                  backgroundColor: isSubtaskOverdue ? 'rgba(234, 67, 53, 0.1)' : 'var(--bg-secondary)',
-                                  padding: '1px 6px',
-                                  borderRadius: '10px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '3px',
-                                  marginTop: '2px',
-                                  fontWeight: isSubtaskOverdue ? '600' : '400'
-                                }}>
-                                  {isSubtaskOverdue ? <AlertTriangle size={8} /> : <Clock size={8} />}
-                                  {isSubtaskOverdue ? 'Overdue' : 'Due'}: {subtask.dueDate} {subtask.dueTime && `at ${subtask.dueTime}`}
-                                </span>
-                              )}
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                {subtask.dueDate && (
+                                  <span style={{ 
+                                    fontSize: '10px', 
+                                    color: isSubtaskOverdue ? '#ea4335' : 'var(--text-secondary)',
+                                    backgroundColor: isSubtaskOverdue ? 'rgba(234, 67, 53, 0.1)' : 'var(--bg-secondary)',
+                                    padding: '1px 6px',
+                                    borderRadius: '10px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    marginTop: '2px',
+                                    fontWeight: isSubtaskOverdue ? '600' : '400'
+                                  }}>
+                                    {isSubtaskOverdue ? <AlertTriangle size={8} /> : <Clock size={8} />}
+                                    {isSubtaskOverdue ? 'Overdue' : 'Due'}: {subtask.dueDate} {subtask.dueTime && `at ${subtask.dueTime}`}
+                                  </span>
+                                )}
+                                {subtask.tags && subtask.tags.map(tag => {
+                                  const colors = getTagColor(tag);
+                                  return (
+                                    <span key={tag} style={{
+                                      fontSize: '10px',
+                                      color: colors.text,
+                                      backgroundColor: colors.bg,
+                                      border: `1px solid ${colors.border}`,
+                                      padding: '1px 6px',
+                                      borderRadius: '10px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      marginTop: '2px',
+                                      fontWeight: '500'
+                                    }}>
+                                      {tag}
+                                    </span>
+                                  );
+                                })}
+                              </div>
                             </div>
                             
                             <button 
@@ -879,6 +1105,70 @@ function App() {
                                     color: 'var(--text-primary)',
                                     fontSize: '11px',
                                     outline: 'none'
+                                  }}
+                                />
+                              </div>
+                              {/* Tag Editor for Subtask */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start', flex: 1 }}>
+                                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: '500' }}>Tags</label>
+                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                                  {subtask.tags && subtask.tags.map(t => {
+                                    const colors = getTagColor(t);
+                                    return (
+                                      <span key={t} style={{
+                                        fontSize: '9px',
+                                        color: colors.text,
+                                        backgroundColor: colors.bg,
+                                        border: `1px solid ${colors.border}`,
+                                        padding: '1px 5px',
+                                        borderRadius: '8px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px'
+                                      }}>
+                                        {t}
+                                        <button 
+                                          type="button" 
+                                          onClick={() => handleRemoveTag(subtask, t)}
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: 'var(--text-tertiary)',
+                                            width: '10px',
+                                            height: '10px',
+                                            fontSize: '8px',
+                                            lineHeight: 1
+                                          }}
+                                        >
+                                          &times;
+                                        </button>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                                <input 
+                                  type="text" 
+                                  placeholder="Add a tag..."
+                                  data-testid="tag-input"
+                                  value={newTagInputs[subtask.id] || ''}
+                                  onChange={(e) => setNewTagInputs({ ...newTagInputs, [subtask.id]: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddTag(subtask, e.target.value);
+                                      setNewTagInputs({ ...newTagInputs, [subtask.id]: '' });
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '3px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--bg-primary)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '11px',
+                                    outline: 'none',
+                                    width: '100%'
                                   }}
                                 />
                               </div>
@@ -968,8 +1258,8 @@ function App() {
               Completed ({tasks.filter(t => t.completed).length})
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {completedParentTasks.map(task => {
-                const completedSubtasks = tasks.filter(t => t.parentId === task.id && t.completed);
+              {filteredCompletedParentTasks.map(task => {
+                const completedSubtasks = tasks.filter(t => t.parentId === task.id && t.completed && (!selectedTagFilter || (t.tags && t.tags.includes(selectedTagFilter)) || (task.tags && task.tags.includes(selectedTagFilter))));
                 return (
                   <div key={task.id} style={{ display: 'flex', flexDirection: 'column' }}>
                     <div 
@@ -989,15 +1279,38 @@ function App() {
                       >
                         <CheckCircle2 size={20} />
                       </button>
-                      <span style={{ 
-                        flex: 1, 
-                        textAlign: 'left', 
-                        textDecoration: 'line-through', 
-                        fontSize: '15px', 
-                        color: 'var(--text-secondary)' 
-                      }}>
-                        {task.title}
-                      </span>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <span style={{ 
+                          textAlign: 'left', 
+                          textDecoration: 'line-through', 
+                          fontSize: '15px', 
+                          color: 'var(--text-secondary)' 
+                        }}>
+                          {task.title}
+                        </span>
+                        {task.tags && task.tags.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                            {task.tags.map(tag => {
+                              const colors = getTagColor(tag);
+                              return (
+                                <span key={tag} style={{
+                                  fontSize: '10px',
+                                  color: colors.text,
+                                  backgroundColor: colors.bg,
+                                  border: `1px solid ${colors.border}`,
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  fontWeight: '500'
+                                }}>
+                                  {tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                       <button 
                         data-testid="delete-task-btn"
                         onClick={() => handleDeleteTask(task.id)}
@@ -1030,15 +1343,38 @@ function App() {
                             >
                               <CheckCircle2 size={18} />
                             </button>
-                            <span style={{ 
-                              flex: 1, 
-                              textAlign: 'left', 
-                              textDecoration: 'line-through', 
-                              fontSize: '14px', 
-                              color: 'var(--text-secondary)' 
-                            }}>
-                              {subtask.title}
-                            </span>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                              <span style={{ 
+                                textAlign: 'left', 
+                                textDecoration: 'line-through', 
+                                fontSize: '14px', 
+                                color: 'var(--text-secondary)' 
+                              }}>
+                                {subtask.title}
+                              </span>
+                              {subtask.tags && subtask.tags.length > 0 && (
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                                  {subtask.tags.map(tag => {
+                                    const colors = getTagColor(tag);
+                                    return (
+                                      <span key={tag} style={{
+                                        fontSize: '9px',
+                                        color: colors.text,
+                                        backgroundColor: colors.bg,
+                                        border: `1px solid ${colors.border}`,
+                                        padding: '1px 5px',
+                                        borderRadius: '8px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        fontWeight: '500'
+                                      }}>
+                                        {tag}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                             <button 
                               data-testid="delete-task-btn"
                               onClick={() => handleDeleteTask(subtask.id)}
