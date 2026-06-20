@@ -12,7 +12,10 @@ import {
   X, 
   Check, 
   ListTodo,
-  Lightbulb
+  Lightbulb,
+  Calendar,
+  Clock,
+  Bell
 } from 'lucide-react';
 import { 
   subscribeToLists, 
@@ -49,6 +52,11 @@ function App() {
   const [answers, setAnswers] = useState([]);
   const [customProposal, setCustomProposal] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
+
+  // Reminder states
+  const [editingTaskDetailsId, setEditingTaskDetailsId] = useState(null);
+  const [activeReminder, setActiveReminder] = useState(null);
+  const [dismissedReminders, setDismissedReminders] = useState(new Set());
 
   // Initialize theme
   useEffect(() => {
@@ -118,6 +126,62 @@ function App() {
     });
     return () => unsubscribeAnswers();
   }, [aiQuestions]);
+
+  // Background reminder checker engine
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const activeTasksWithDue = tasks.filter(t => !t.completed && t.dueDate && t.dueTime);
+      
+      for (const task of activeTasksWithDue) {
+        const [year, month, day] = task.dueDate.split('-').map(Number);
+        const [hours, minutes] = task.dueTime.split(':').map(Number);
+        const dueDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+        
+        if (now >= dueDateTime && !dismissedReminders.has(task.id)) {
+          setActiveReminder({
+            id: task.id,
+            title: task.title,
+            dueText: `${task.dueDate} at ${task.dueTime}`
+          });
+          break;
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [tasks, dismissedReminders]);
+
+  const handleUpdateDueDate = async (task, dueDate) => {
+    try {
+      await saveTask({
+        ...task,
+        dueDate
+      });
+    } catch (err) {
+      console.error('Failed to update due date:', err);
+    }
+  };
+
+  const handleUpdateDueTime = async (task, dueTime) => {
+    try {
+      await saveTask({
+        ...task,
+        dueTime
+      });
+    } catch (err) {
+      console.error('Failed to update due time:', err);
+    }
+  };
+
+  const handleDismissReminder = (taskId) => {
+    setDismissedReminders(prev => {
+      const next = new Set(prev);
+      next.add(taskId);
+      return next;
+    });
+    setActiveReminder(null);
+  };
 
   // Task Handlers
   const handleAddTask = async (e) => {
@@ -471,36 +535,131 @@ function App() {
 
         {/* Active Tasks Section */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '32px' }}>
-          {activeTasks.map(task => (
-            <div 
-              key={task.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                backgroundColor: 'transparent',
-                gap: '12px',
-                borderBottom: '1px solid rgba(0,0,0,0.04)'
-              }}
-            >
-              <button 
-                onClick={() => handleToggleTask(task)}
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                <Circle size={20} />
-              </button>
-              <span style={{ flex: 1, textAlign: 'left', fontSize: '15px', color: 'var(--text-primary)' }}>
-                {task.title}
-              </span>
-              <button 
-                onClick={() => handleDeleteTask(task.id)}
-                style={{ color: 'var(--text-tertiary)' }}
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
+          {activeTasks.map(task => {
+            const isOverdue = (() => {
+              if (!task.dueDate || !task.dueTime) return false;
+              const [y, m, d] = task.dueDate.split('-').map(Number);
+              const [h, min] = task.dueTime.split(':').map(Number);
+              const due = new Date(y, m - 1, d, h, min);
+              return new Date() > due;
+            })();
+
+            return (
+              <div key={task.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Main Task Item */}
+                <div 
+                  data-testid="task-row"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: 'transparent',
+                    gap: '12px',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)'
+                  }}
+                >
+                  <button 
+                    onClick={() => handleToggleTask(task)}
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <Circle size={20} />
+                  </button>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '15px', color: 'var(--text-primary)', textAlign: 'left' }}>
+                      {task.title}
+                    </span>
+                    {task.dueDate && (
+                      <span style={{ 
+                        fontSize: '11px', 
+                        color: isOverdue ? '#ea4335' : 'var(--text-secondary)',
+                        backgroundColor: isOverdue ? 'rgba(234, 67, 53, 0.1)' : 'var(--bg-secondary)',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginTop: '4px',
+                        fontWeight: isOverdue ? '600' : '400'
+                      }}>
+                        {isOverdue ? <AlertTriangle size={10} /> : <Clock size={10} />}
+                        {isOverdue ? 'Overdue' : 'Due'}: {task.dueDate} {task.dueTime && `at ${task.dueTime}`}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Edit details button */}
+                  <button 
+                    data-testid="edit-details-btn"
+                    onClick={() => setEditingTaskDetailsId(editingTaskDetailsId === task.id ? null : task.id)}
+                    style={{ color: 'var(--text-secondary)', padding: '4px', borderRadius: '50%' }}
+                    title="Edit due date/time"
+                  >
+                    <Calendar size={16} />
+                  </button>
+
+                  <button 
+                    data-testid="delete-task-btn"
+                    onClick={() => handleDeleteTask(task.id)}
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                {/* Collapsible Details Edit Tray */}
+                {editingTaskDetailsId === task.id && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    paddingLeft: '44px',
+                    paddingRight: '16px',
+                    paddingTop: '6px',
+                    paddingBottom: '12px',
+                    backgroundColor: 'rgba(0,0,0,0.01)',
+                    borderBottom: '1px solid rgba(0,0,0,0.02)'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>Due Date</label>
+                      <input 
+                        type="date" 
+                        value={task.dueDate || ''}
+                        onChange={(e) => handleUpdateDueDate(task, e.target.value)}
+                        data-testid="due-date-input"
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          fontSize: '12.5px',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>Due Time</label>
+                      <input 
+                        type="time" 
+                        value={task.dueTime || ''}
+                        onChange={(e) => handleUpdateDueTime(task, e.target.value)}
+                        data-testid="due-time-input"
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          fontSize: '12.5px',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {activeTasks.length === 0 && (
             <div style={{ padding: '24px 0', textAlign: 'left', color: 'var(--text-tertiary)', fontSize: '14px' }}>
@@ -552,6 +711,7 @@ function App() {
                     {task.title}
                   </span>
                   <button 
+                    data-testid="delete-task-btn"
                     onClick={() => handleDeleteTask(task.id)}
                     style={{ color: 'var(--text-tertiary)' }}
                   >
@@ -981,7 +1141,109 @@ function App() {
             box-shadow: 0 0 0 0 rgba(138, 180, 248, 0);
           }
         }
+        @keyframes slideIn {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
       `}</style>
+
+      {/* Reminder Popup Alert Banner */}
+      {activeReminder && (
+        <div 
+          data-testid="reminder-popup"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            maxWidth: '380px',
+            backgroundColor: 'var(--bg-primary)',
+            border: '2px solid var(--color-brand)',
+            borderRadius: '12px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            zIndex: 9999,
+            animation: 'slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <div style={{
+              backgroundColor: 'var(--color-brand-light)',
+              padding: '6px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-brand)',
+              flexShrink: 0
+            }}>
+              <Bell size={18} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', textAlign: 'left' }}>
+                Task Reminder
+              </h4>
+              <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', lineHeight: '1.4', color: 'var(--text-secondary)', textAlign: 'left' }}>
+                The task <strong>"{activeReminder.title}"</strong> is due: <strong>{activeReminder.dueText}</strong>.
+              </p>
+            </div>
+            <button 
+              data-testid="dismiss-reminder-btn"
+              onClick={() => handleDismissReminder(activeReminder.id)} 
+              style={{ color: 'var(--text-secondary)', marginLeft: 'auto', padding: '2px', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end' }}>
+            <button 
+              data-testid="dismiss-reminder-btn"
+              onClick={() => handleDismissReminder(activeReminder.id)}
+              style={{
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-secondary)',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              Dismiss
+            </button>
+            <button 
+              onClick={async () => {
+                const t = tasks.find(x => x.id === activeReminder.id);
+                if (t) {
+                  await handleToggleTask(t);
+                }
+                handleDismissReminder(activeReminder.id);
+              }}
+              style={{
+                backgroundColor: 'var(--color-brand)',
+                color: '#fff',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              Complete Task
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

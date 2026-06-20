@@ -79,7 +79,8 @@ def fetch_unprocessed_answers(project_id):
 
 def mark_answer_processed(project_id, doc_path, answer_data):
     # Update processed to true using patch
-    url = f"https://firestore.googleapis.com/v1{doc_path}?updateMask.fieldPaths=processed"
+    path = doc_path if doc_path.startswith('/') else f"/{doc_path}"
+    url = f"https://firestore.googleapis.com/v1{path}?updateMask.fieldPaths=processed"
     
     # We must rebuild the fields dictionary in Firestore REST structure
     fields = {}
