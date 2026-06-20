@@ -103,7 +103,7 @@ def mark_answer_processed(project_id, doc_path, answer_data):
     return make_firestore_request(url, data=doc_payload, method='PATCH')
 
 def post_next_question(project_id, question_id, question_text, options):
-    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/questions?documentId={question_id}"
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/questions/{question_id}"
     
     # Deactivate other questions first by querying and patching (omitted for brevity, or we clean up)
     
