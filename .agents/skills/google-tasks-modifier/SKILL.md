@@ -30,3 +30,4 @@ Use this skill when modifying the user interface or adding features to the Googl
 1. **Keep Fallbacks Intact**: Ensure that if the database is running in mock mode (i.e. `dbMode === 'local'`), the application does not crash.
 2. **Reuse Lucide Icons**: Import icons from `lucide-react`. Use existing icon style guidelines (`size`, `color`).
 3. **Responsive Grids**: Use flexible container elements (Flexbox or Grid) to ensure the interface renders beautifully on mobile, tablet, and widescreen.
+4. **Implementation Plan Approval**: Always write or update the implementation plan (`implementation_plan.md`) and obtain explicit user approval before modifying any files or beginning implementation on a new feature.
