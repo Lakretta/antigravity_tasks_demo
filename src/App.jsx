@@ -49,7 +49,7 @@ function App() {
   const [selectedOption, setSelectedOption] = useState(null);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
-  const [answers, setAnswers] = useState([]);
+  const [answers, setAnswers] = useState(null);
   const [customProposal, setCustomProposal] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
 
@@ -122,10 +122,20 @@ function App() {
     setHasVoted(!!localStorage.getItem(votedKey));
 
     const unsubscribeAnswers = subscribeToAnswers(activeQuestion.id, (data) => {
-      setAnswers(data);
+      setAnswers(data || []);
     });
     return () => unsubscribeAnswers();
   }, [aiQuestions]);
+
+  // Self-healing: if answers are loaded, length is 0, but hasVoted is true, clear the stale localStorage cache
+  useEffect(() => {
+    const activeQuestion = aiQuestions[0];
+    if (activeQuestion && answers !== null && answers.length === 0 && hasVoted) {
+      const votedKey = 'voted_' + activeQuestion.id;
+      localStorage.removeItem(votedKey);
+      setHasVoted(false);
+    }
+  }, [answers, aiQuestions, hasVoted]);
 
   // Background reminder checker engine
   useEffect(() => {
@@ -299,10 +309,10 @@ function App() {
 
   // AI Sidebar computations
   const activeQuestion = aiQuestions[0];
-  const totalVotes = answers.length;
+  const totalVotes = answers ? answers.length : 0;
   
   // Calculate results if user has voted
-  const voteResults = activeQuestion ? activeQuestion.options.map((option, idx) => {
+  const voteResults = (activeQuestion && answers) ? activeQuestion.options.map((option, idx) => {
     const votesCount = answers.filter(a => a.selectedOptionIndex === idx).length;
     const percentage = totalVotes > 0 ? Math.round((votesCount / totalVotes) * 100) : 0;
     return {
@@ -313,11 +323,11 @@ function App() {
   }) : [];
 
   // Extract custom ideas from answers
-  const customIdeas = answers.filter(a => a.selectedOptionIndex === -1);
+  const customIdeas = answers ? answers.filter(a => a.selectedOptionIndex === -1) : [];
 
   // Find what option active user voted for in the current session
-  const myAnswer = activeQuestion ? answers.find(a => a.questionId === activeQuestion.id && (a.id === 'session' || a.submittedAt > Date.now() - 3600000)) : null; // estimation
-  const processedOrPendingText = (activeQuestion && answers.length > 0) ? answers[answers.length - 1].selectedOptionText : '';
+  const myAnswer = (activeQuestion && answers) ? answers.find(a => a.questionId === activeQuestion.id && (a.id === 'session' || a.submittedAt > Date.now() - 3600000)) : null; // estimation
+  const processedOrPendingText = (activeQuestion && answers && answers.length > 0) ? answers[answers.length - 1].selectedOptionText : '';
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
