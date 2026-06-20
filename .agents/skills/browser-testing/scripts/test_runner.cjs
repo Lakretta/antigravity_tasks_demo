@@ -54,71 +54,87 @@ const artifactsDir = getArg('--artifacts-dir') || '/home/vlad/.gemini/antigravit
     });
     await new Promise(r => setTimeout(r, 2000));
 
-    // 1. Add Task
-    console.log("Adding a new task...");
+    // 1. Add Parent Task
+    console.log("Adding parent task...");
     await page.waitForSelector('input[placeholder="Add a task"]', { timeout: 5000 });
-    await page.type('input[placeholder="Add a task"]', 'Verify reminders and alerts');
+    await page.type('input[placeholder="Add a task"]', 'Parent Task Test');
     await page.keyboard.press('Enter');
     await new Promise(r => setTimeout(r, 1500));
 
-    // 2. Open Edit Details panel
-    console.log("Opening edit details panel...");
-    await page.waitForSelector('button[data-testid="edit-details-btn"]', { timeout: 5000 });
-    await page.click('button[data-testid="edit-details-btn"]');
+    // 2. Open Subtask inline creation input
+    console.log("Clicking add subtask button...");
+    await page.waitForSelector('button[data-testid="add-subtask-btn"]', { timeout: 5000 });
+    await page.click('button[data-testid="add-subtask-btn"]');
     
-    // 3. Set due date/time to a past timestamp to immediately trigger overdue reminder
-    console.log("Configuring task due date and time to the past...");
-    await page.waitForSelector('input[data-testid="due-date-input"]', { timeout: 5000 });
-    
-    // Set inputs using the React Native Setter hack
-    await page.$eval('input[data-testid="due-date-input"]', el => {
-      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-      nativeSetter.call(el, '2026-06-20');
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    await page.$eval('input[data-testid="due-time-input"]', el => {
-      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-      nativeSetter.call(el, '12:00');
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    
-    await new Promise(r => setTimeout(r, 2000));
+    // 3. Add Subtask
+    console.log("Adding subtask...");
+    await page.waitForSelector('input[placeholder="Add a subtask"]', { timeout: 5000 });
+    await page.type('input[placeholder="Add a subtask"]', 'Subtask Test');
+    await page.keyboard.press('Enter');
+    await new Promise(r => setTimeout(r, 1500));
 
-    const screenshot1 = path.join(artifactsDir, 'test_step_1_task_added.png');
+    const screenshot1 = path.join(artifactsDir, 'test_step_1_subtask_created.png');
     console.log(`Saving Step 1 screenshot: ${screenshot1}`);
     await page.screenshot({ path: screenshot1 });
 
-    // 4. Wait for background interval to detect overdue task and display the pop-up alert
-    console.log("Waiting for reminder popup alert to trigger...");
-    await page.waitForSelector('div[data-testid="reminder-popup"]', { timeout: 8000 });
-    
-    const screenshot2 = path.join(artifactsDir, 'test_step_2_reminder_triggered.png');
+    // 4. Try to click parent task complete checkbox (expect warning)
+    console.log("Attempting to complete parent task (should block)...");
+    await page.evaluate(() => {
+      // Find parent task row (first task row) and click its checkbox button
+      const taskRows = document.querySelectorAll('div[data-testid="task-row"]');
+      for (const row of taskRows) {
+        if (row.textContent.includes('Parent Task Test')) {
+          row.querySelector('button').click();
+          break;
+        }
+      }
+    });
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Check if blocker warning is visible
+    console.log("Verifying blocker warning banner is displayed...");
+    await page.waitForSelector('div[data-testid="blocker-warning"]', { timeout: 5000 });
+
+    const screenshot2 = path.join(artifactsDir, 'test_step_2_blocker_warning.png');
     console.log(`Saving Step 2 screenshot: ${screenshot2}`);
     await page.screenshot({ path: screenshot2 });
 
-    // 5. Dismiss the reminder popup alert
-    console.log("Dismissing the reminder alert...");
-    await page.click('button[data-testid="dismiss-reminder-btn"]');
-    await new Promise(r => setTimeout(r, 1500));
-
-    const screenshot3 = path.join(artifactsDir, 'test_step_3_reminder_dismissed.png');
-    console.log(`Saving Step 3 screenshot: ${screenshot3}`);
-    await page.screenshot({ path: screenshot3 });
-
-    // 6. Complete and cleanup task
-    console.log("Completing and deleting task...");
+    // 5. Complete Subtask first
+    console.log("Completing the subtask...");
     await page.evaluate(() => {
       const taskRows = document.querySelectorAll('div[data-testid="task-row"]');
-      if (taskRows.length > 0) {
-        // Click checkbox
-        taskRows[0].querySelector('button').click();
+      for (const row of taskRows) {
+        if (row.textContent.includes('Subtask Test')) {
+          row.querySelector('button').click();
+          break;
+        }
       }
     });
     await new Promise(r => setTimeout(r, 1500));
 
-    // Delete task
+    const screenshot3 = path.join(artifactsDir, 'test_step_3_subtask_completed.png');
+    console.log(`Saving Step 3 screenshot: ${screenshot3}`);
+    await page.screenshot({ path: screenshot3 });
+
+    // 6. Complete Parent Task (should now succeed)
+    console.log("Completing the parent task (should now succeed)...");
+    await page.evaluate(() => {
+      const taskRows = document.querySelectorAll('div[data-testid="task-row"]');
+      for (const row of taskRows) {
+        if (row.textContent.includes('Parent Task Test')) {
+          row.querySelector('button').click();
+          break;
+        }
+      }
+    });
+    await new Promise(r => setTimeout(r, 1500));
+
+    const screenshot4 = path.join(artifactsDir, 'test_step_4_parent_completed.png');
+    console.log(`Saving Step 4 screenshot: ${screenshot4}`);
+    await page.screenshot({ path: screenshot4 });
+
+    // Delete tasks to clean up
+    console.log("Cleaning up...");
     await page.evaluate(() => {
       const deleteButtons = document.querySelectorAll('button[data-testid="delete-task-btn"]');
       for (const btn of deleteButtons) {
@@ -127,11 +143,7 @@ const artifactsDir = getArg('--artifacts-dir') || '/home/vlad/.gemini/antigravit
     });
     await new Promise(r => setTimeout(r, 1500));
 
-    const screenshot4 = path.join(artifactsDir, 'test_step_4_cleanup.png');
-    console.log(`Saving Step 4 screenshot: ${screenshot4}`);
-    await page.screenshot({ path: screenshot4 });
-
-    console.log("Browser testing for Reminders & Alerts completed successfully.");
+    console.log("Browser E2E testing for Subtask dependency completed successfully.");
   } catch (error) {
     console.error("Browser testing failed:", error);
     process.exit(1);

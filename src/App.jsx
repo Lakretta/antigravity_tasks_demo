@@ -58,6 +58,11 @@ function App() {
   const [activeReminder, setActiveReminder] = useState(null);
   const [dismissedReminders, setDismissedReminders] = useState(new Set());
 
+  // Subtask & Blocker Warning states
+  const [activeSubtaskInputTaskId, setActiveSubtaskInputTaskId] = useState(null);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [blockerWarning, setBlockerWarning] = useState({ parentTitle: '', show: false });
+
   // Initialize theme
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -212,7 +217,47 @@ function App() {
     }
   };
 
+  const handleAddSubtask = async (parentTaskId, e) => {
+    e.preventDefault();
+    if (!newSubtaskTitle.trim()) return;
+    
+    try {
+      await saveTask({
+        listId: activeListId,
+        parentId: parentTaskId,
+        title: newSubtaskTitle.trim(),
+        completed: false,
+        dueDate: '',
+        createdAt: Date.now()
+      });
+      setNewSubtaskTitle('');
+      setActiveSubtaskInputTaskId(null);
+    } catch (err) {
+      console.error('Failed to add subtask:', err);
+    }
+  };
+
   const handleToggleTask = async (task) => {
+    // If completing a task with no parent (meaning it's a parent task)
+    if (!task.completed && !task.parentId) {
+      const incompleteSubtasks = tasks.filter(t => t.parentId === task.id && !t.completed);
+      if (incompleteSubtasks.length > 0) {
+        setBlockerWarning({
+          parentTitle: task.title,
+          show: true
+        });
+        setTimeout(() => {
+          setBlockerWarning(prev => {
+            if (prev.parentTitle === task.id || prev.parentTitle === task.title) {
+              return { ...prev, show: false };
+            }
+            return prev;
+          });
+        }, 4000);
+        return;
+      }
+    }
+
     try {
       await saveTask({
         ...task,
@@ -226,6 +271,11 @@ function App() {
   const handleDeleteTask = async (taskId) => {
     try {
       await deleteTask(taskId);
+      // Cascade delete subtasks
+      const childTasks = tasks.filter(t => t.parentId === taskId);
+      for (const child of childTasks) {
+        await deleteTask(child.id);
+      }
     } catch (err) {
       console.error('Failed to delete task:', err);
     }
@@ -303,8 +353,8 @@ function App() {
     }
   };
 
-  const activeTasks = tasks.filter(t => !t.completed);
-  const completedTasks = tasks.filter(t => t.completed);
+  const activeParentTasks = tasks.filter(t => !t.completed && (!t.parentId || !tasks.some(p => p.id === t.parentId)));
+  const completedParentTasks = tasks.filter(t => t.completed && (!t.parentId || !tasks.some(p => p.id === t.parentId)));
   const activeList = lists.find(l => l.id === activeListId);
 
   // AI Sidebar computations
@@ -545,7 +595,7 @@ function App() {
 
         {/* Active Tasks Section */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '32px' }}>
-          {activeTasks.map(task => {
+          {activeParentTasks.map(task => {
             const isOverdue = (() => {
               if (!task.dueDate || !task.dueTime) return false;
               const [y, m, d] = task.dueDate.split('-').map(Number);
@@ -553,6 +603,11 @@ function App() {
               const due = new Date(y, m - 1, d, h, min);
               return new Date() > due;
             })();
+
+            const parentSubtasks = tasks.filter(t => t.parentId === task.id);
+            const totalSubtasks = parentSubtasks.length;
+            const completedSubtasksCount = parentSubtasks.filter(s => s.completed).length;
+            const hasIncompleteSubtasks = parentSubtasks.some(s => !s.completed);
 
             return (
               <div key={task.id} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -571,33 +626,66 @@ function App() {
                 >
                   <button 
                     onClick={() => handleToggleTask(task)}
-                    style={{ color: 'var(--text-secondary)' }}
+                    style={{ color: hasIncompleteSubtasks ? 'var(--text-tertiary)' : 'var(--text-secondary)' }}
                   >
-                    <Circle size={20} />
+                    {hasIncompleteSubtasks ? (
+                      <AlertTriangle size={20} style={{ color: 'var(--color-danger)' }} title="Blocked by incomplete subtasks" />
+                    ) : (
+                      <Circle size={20} />
+                    )}
                   </button>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                     <span style={{ fontSize: '15px', color: 'var(--text-primary)', textAlign: 'left' }}>
                       {task.title}
                     </span>
-                    {task.dueDate && (
-                      <span style={{ 
-                        fontSize: '11px', 
-                        color: isOverdue ? '#ea4335' : 'var(--text-secondary)',
-                        backgroundColor: isOverdue ? 'rgba(234, 67, 53, 0.1)' : 'var(--bg-secondary)',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        marginTop: '4px',
-                        fontWeight: isOverdue ? '600' : '400'
-                      }}>
-                        {isOverdue ? <AlertTriangle size={10} /> : <Clock size={10} />}
-                        {isOverdue ? 'Overdue' : 'Due'}: {task.dueDate} {task.dueTime && `at ${task.dueTime}`}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {task.dueDate && (
+                        <span style={{ 
+                          fontSize: '11px', 
+                          color: isOverdue ? '#ea4335' : 'var(--text-secondary)',
+                          backgroundColor: isOverdue ? 'rgba(234, 67, 53, 0.1)' : 'var(--bg-secondary)',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          marginTop: '4px',
+                          fontWeight: isOverdue ? '600' : '400'
+                        }}>
+                          {isOverdue ? <AlertTriangle size={10} /> : <Clock size={10} />}
+                          {isOverdue ? 'Overdue' : 'Due'}: {task.dueDate} {task.dueTime && `at ${task.dueTime}`}
+                        </span>
+                      )}
+                      {totalSubtasks > 0 && (
+                        <span style={{ 
+                          fontSize: '11px', 
+                          color: hasIncompleteSubtasks ? 'var(--color-danger)' : 'var(--color-success)',
+                          backgroundColor: hasIncompleteSubtasks ? 'var(--color-danger-bg)' : 'var(--color-success-bg)',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          marginTop: '4px',
+                          fontWeight: '600'
+                        }}>
+                          {hasIncompleteSubtasks ? <AlertTriangle size={10} /> : <Check size={10} />}
+                          {completedSubtasksCount}/{totalSubtasks} subtasks
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
+                  {/* Add Subtask button */}
+                  <button 
+                    data-testid="add-subtask-btn"
+                    onClick={() => setActiveSubtaskInputTaskId(activeSubtaskInputTaskId === task.id ? null : task.id)}
+                    style={{ color: 'var(--text-secondary)', padding: '4px', borderRadius: '50%' }}
+                    title="Add subtask"
+                  >
+                    <Plus size={16} />
+                  </button>
+
                   {/* Edit details button */}
                   <button 
                     data-testid="edit-details-btn"
@@ -667,11 +755,198 @@ function App() {
                     </div>
                   </div>
                 )}
+
+                {/* Subtasks rendering */}
+                {parentSubtasks.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                    {parentSubtasks.map(subtask => {
+                      const isSubtaskOverdue = (() => {
+                        if (!subtask.dueDate || !subtask.dueTime) return false;
+                        const [y, m, d] = subtask.dueDate.split('-').map(Number);
+                        const [h, min] = subtask.dueTime.split(':').map(Number);
+                        const due = new Date(y, m - 1, d, h, min);
+                        return new Date() > due;
+                      })();
+
+                      return (
+                        <div key={subtask.id} style={{ display: 'flex', flexDirection: 'column', paddingLeft: '36px' }}>
+                          <div 
+                            data-testid="task-row"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '8px 16px',
+                              borderRadius: '8px',
+                              backgroundColor: 'transparent',
+                              gap: '12px',
+                              borderBottom: '1px solid rgba(0,0,0,0.02)'
+                            }}
+                          >
+                            <button 
+                              onClick={() => handleToggleTask(subtask)}
+                              style={{ color: subtask.completed ? 'var(--color-brand)' : 'var(--text-secondary)' }}
+                            >
+                              {subtask.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                            </button>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                              <span style={{ 
+                                fontSize: '14px', 
+                                color: subtask.completed ? 'var(--text-secondary)' : 'var(--text-primary)', 
+                                textAlign: 'left',
+                                textDecoration: subtask.completed ? 'line-through' : 'none'
+                              }}>
+                                {subtask.title}
+                              </span>
+                              {subtask.dueDate && (
+                                <span style={{ 
+                                  fontSize: '10px', 
+                                  color: isSubtaskOverdue ? '#ea4335' : 'var(--text-secondary)',
+                                  backgroundColor: isSubtaskOverdue ? 'rgba(234, 67, 53, 0.1)' : 'var(--bg-secondary)',
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  marginTop: '2px',
+                                  fontWeight: isSubtaskOverdue ? '600' : '400'
+                                }}>
+                                  {isSubtaskOverdue ? <AlertTriangle size={8} /> : <Clock size={8} />}
+                                  {isSubtaskOverdue ? 'Overdue' : 'Due'}: {subtask.dueDate} {subtask.dueTime && `at ${subtask.dueTime}`}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <button 
+                              data-testid="edit-details-btn"
+                              onClick={() => setEditingTaskDetailsId(editingTaskDetailsId === subtask.id ? null : subtask.id)}
+                              style={{ color: 'var(--text-secondary)', padding: '4px', borderRadius: '50%' }}
+                              title="Edit due date/time"
+                            >
+                              <Calendar size={14} />
+                            </button>
+
+                            <button 
+                              data-testid="delete-task-btn"
+                              onClick={() => handleDeleteTask(subtask.id)}
+                              style={{ color: 'var(--text-tertiary)' }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          {/* Collapsible Details Edit Tray for Subtask */}
+                          {editingTaskDetailsId === subtask.id && (
+                            <div style={{
+                              display: 'flex',
+                              gap: '12px',
+                              paddingLeft: '44px',
+                              paddingRight: '16px',
+                              paddingTop: '4px',
+                              paddingBottom: '8px',
+                              backgroundColor: 'rgba(0,0,0,0.01)',
+                              borderBottom: '1px solid rgba(0,0,0,0.02)'
+                            }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
+                                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: '500' }}>Due Date</label>
+                                <input 
+                                  type="date" 
+                                  value={subtask.dueDate || ''}
+                                  onChange={(e) => handleUpdateDueDate(subtask, e.target.value)}
+                                  data-testid="due-date-input"
+                                  style={{
+                                    padding: '3px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--bg-primary)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '11px',
+                                    outline: 'none'
+                                  }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
+                                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: '500' }}>Due Time</label>
+                                <input 
+                                  type="time" 
+                                  value={subtask.dueTime || ''}
+                                  onChange={(e) => handleUpdateDueTime(subtask, e.target.value)}
+                                  data-testid="due-time-input"
+                                  style={{
+                                    padding: '3px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--bg-primary)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '11px',
+                                    outline: 'none'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Inline Subtask Entry Form */}
+                {activeSubtaskInputTaskId === task.id && (
+                  <form 
+                    onSubmit={(e) => handleAddSubtask(task.id, e)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      paddingLeft: '52px', 
+                      paddingRight: '16px',
+                      paddingTop: '6px',
+                      paddingBottom: '6px',
+                      gap: '8px' 
+                    }}
+                  >
+                    <Plus size={16} color="var(--text-secondary)" />
+                    <input 
+                      type="text" 
+                      placeholder="Add a subtask" 
+                      value={newSubtaskTitle}
+                      onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                      autoFocus
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        borderBottom: '1px solid var(--color-brand)',
+                        backgroundColor: 'transparent',
+                        fontSize: '14.5px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        padding: '4px 0'
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setActiveSubtaskInputTaskId(null);
+                          setNewSubtaskTitle('');
+                        }}
+                        style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '4px', backgroundColor: 'var(--color-brand)', color: '#fff' }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             );
           })}
 
-          {activeTasks.length === 0 && (
+          {tasks.filter(t => !t.completed).length === 0 && (
             <div style={{ padding: '24px 0', textAlign: 'left', color: 'var(--text-tertiary)', fontSize: '14px' }}>
               No active tasks. Add a task to get started!
             </div>
@@ -679,7 +954,7 @@ function App() {
         </div>
 
         {/* Completed Tasks Section */}
-        {completedTasks.length > 0 && (
+        {completedParentTasks.length > 0 && (
           <div>
             <div style={{
               fontSize: '14px',
@@ -690,45 +965,94 @@ function App() {
               marginBottom: '12px',
               textAlign: 'left'
             }}>
-              Completed ({completedTasks.length})
+              Completed ({tasks.filter(t => t.completed).length})
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {completedTasks.map(task => (
-                <div 
-                  key={task.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    gap: '12px',
-                    opacity: 0.65
-                  }}
-                >
-                  <button 
-                    onClick={() => handleToggleTask(task)}
-                    style={{ color: 'var(--color-brand)' }}
-                  >
-                    <CheckCircle2 size={20} />
-                  </button>
-                  <span style={{ 
-                    flex: 1, 
-                    textAlign: 'left', 
-                    textDecoration: 'line-through', 
-                    fontSize: '15px', 
-                    color: 'var(--text-secondary)' 
-                  }}>
-                    {task.title}
-                  </span>
-                  <button 
-                    data-testid="delete-task-btn"
-                    onClick={() => handleDeleteTask(task.id)}
-                    style={{ color: 'var(--text-tertiary)' }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
+              {completedParentTasks.map(task => {
+                const completedSubtasks = tasks.filter(t => t.parentId === task.id && t.completed);
+                return (
+                  <div key={task.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div 
+                      data-testid="task-row"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        gap: '12px',
+                        opacity: 0.65
+                      }}
+                    >
+                      <button 
+                        onClick={() => handleToggleTask(task)}
+                        style={{ color: 'var(--color-brand)' }}
+                      >
+                        <CheckCircle2 size={20} />
+                      </button>
+                      <span style={{ 
+                        flex: 1, 
+                        textAlign: 'left', 
+                        textDecoration: 'line-through', 
+                        fontSize: '15px', 
+                        color: 'var(--text-secondary)' 
+                      }}>
+                        {task.title}
+                      </span>
+                      <button 
+                        data-testid="delete-task-btn"
+                        onClick={() => handleDeleteTask(task.id)}
+                        style={{ color: 'var(--text-tertiary)' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+
+                    {/* Completed Subtasks rendering */}
+                    {completedSubtasks.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                        {completedSubtasks.map(subtask => (
+                          <div 
+                            key={subtask.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '8px 16px',
+                              paddingLeft: '48px',
+                              borderRadius: '8px',
+                              gap: '12px',
+                              opacity: 0.55
+                            }}
+                            data-testid="task-row"
+                          >
+                            <button 
+                              onClick={() => handleToggleTask(subtask)}
+                              style={{ color: 'var(--color-brand)' }}
+                            >
+                              <CheckCircle2 size={18} />
+                            </button>
+                            <span style={{ 
+                              flex: 1, 
+                              textAlign: 'left', 
+                              textDecoration: 'line-through', 
+                              fontSize: '14px', 
+                              color: 'var(--text-secondary)' 
+                            }}>
+                              {subtask.title}
+                            </span>
+                            <button 
+                              data-testid="delete-task-btn"
+                              onClick={() => handleDeleteTask(subtask.id)}
+                              style={{ color: 'var(--text-tertiary)' }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1161,6 +1485,16 @@ function App() {
             opacity: 1;
           }
         }
+        @keyframes slideUp {
+          from {
+            transform: translate(-50%, 100%);
+            opacity: 0;
+          }
+          to {
+            transform: translate(-50%, 0);
+            opacity: 1;
+          }
+        }
       `}</style>
 
       {/* Reminder Popup Alert Banner */}
@@ -1252,6 +1586,59 @@ function App() {
               Complete Task
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Blocker Warning Popup Alert Banner */}
+      {blockerWarning && blockerWarning.show && (
+        <div 
+          data-testid="blocker-warning"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            maxWidth: '480px',
+            backgroundColor: 'rgba(217, 48, 37, 0.15)', // Glassmorphic translucent red
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(217, 48, 37, 0.35)',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px 0 rgba(0,0,0,0.25)',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            zIndex: 99999,
+            animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        >
+          <div style={{
+            backgroundColor: 'rgba(217, 48, 37, 0.25)',
+            padding: '6px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-danger)',
+            flexShrink: 0
+          }}>
+            <AlertTriangle size={18} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '13.5px', fontWeight: '600', color: 'var(--text-primary)', textAlign: 'left' }}>
+              Completion Blocked
+            </span>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12.5px', lineHeight: '1.4', color: 'var(--text-secondary)', textAlign: 'left' }}>
+              Cannot complete <strong>"{blockerWarning.parentTitle}"</strong>: Please complete all subtasks first!
+            </p>
+          </div>
+          <button 
+            onClick={() => setBlockerWarning({ ...blockerWarning, show: false })} 
+            style={{ color: 'var(--text-secondary)', marginLeft: 'auto', padding: '2px', cursor: 'pointer' }}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 
