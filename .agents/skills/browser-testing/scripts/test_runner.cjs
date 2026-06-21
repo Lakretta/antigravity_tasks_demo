@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
+const fs = require('fs');
 
 const getArg = (flag) => {
   const index = process.argv.indexOf(flag);
@@ -8,7 +9,11 @@ const getArg = (flag) => {
 
 const headless = process.argv.includes('--headless');
 const url = getArg('--url') || 'http://localhost:5173';
-const artifactsDir = getArg('--artifacts-dir') || '/home/vlad/.gemini/antigravity/brain/b335e1ae-0815-4cd4-a7a5-d10ed523cc9a';
+const artifactsDir = getArg('--artifacts-dir') || path.join(process.cwd(), 'scratch');
+
+if (!fs.existsSync(artifactsDir)) {
+  fs.mkdirSync(artifactsDir, { recursive: true });
+}
 
 (async () => {
   const isHeadless = headless;

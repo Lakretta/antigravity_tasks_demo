@@ -1,5 +1,16 @@
 {
+  "firestore": [
+    {
+      "database": "(default)",
+      "rules": "firestore.rules"
+    },
+    {
+      "database": "tasks-db",
+      "rules": "firestore.rules"
+    }
+  ],
   "hosting": {
+    "site": "antigravity-demo-irynababych",
     "public": "dist",
     "ignore": [
       "firebase.json",

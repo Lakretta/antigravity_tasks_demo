@@ -30,8 +30,9 @@ let db = null;
 if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    console.log('Firebase successfully initialized!');
+    const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)';
+    db = getFirestore(app, databaseId);
+    console.log(`Firebase successfully initialized with database: ${databaseId}`);
   } catch (error) {
     console.error('Failed to initialize Firebase, falling back to mock database:', error);
   }

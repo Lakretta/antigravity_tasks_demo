@@ -27,6 +27,10 @@ def get_project_id():
     env = load_env()
     return env.get('VITE_FIREBASE_PROJECT_ID')
 
+def get_database_id():
+    env = load_env()
+    return env.get('VITE_FIREBASE_DATABASE_ID', '(default)')
+
 def make_firestore_request(url, data=None, method='GET'):
     req = urllib.request.Request(url, method=method)
     req.add_header('Content-Type', 'application/json')
@@ -42,14 +46,14 @@ def make_firestore_request(url, data=None, method='GET'):
         print(f"Error making request to {url}: {e}")
         return None
 
-def fetch_unprocessed_answers(project_id):
+def fetch_unprocessed_answers(project_id, database_id='(default)'):
     if not project_id:
         print("Error: VITE_FIREBASE_PROJECT_ID not set in .env")
         return []
         
     # Query answers collection
     # Note: Using Firestore StructuredQuery REST endpoint or simple list depending on needs
-    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/answers"
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/answers"
     result = make_firestore_request(url)
     
     if not result or 'documents' not in result:
@@ -102,8 +106,8 @@ def mark_answer_processed(project_id, doc_path, answer_data):
     
     return make_firestore_request(url, data=doc_payload, method='PATCH')
 
-def post_next_question(project_id, question_id, question_text, options):
-    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/questions/{question_id}"
+def post_next_question(project_id, question_id, question_text, options, database_id='(default)'):
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions/{question_id}"
     
     # Deactivate other questions first by querying and patching (omitted for brevity, or we clean up)
     
@@ -129,6 +133,7 @@ def post_next_question(project_id, question_id, question_text, options):
 
 def main():
     project_id = get_project_id()
+    database_id = get_database_id()
     if not project_id:
         print("\n=== OFFLINE DEMO MODE ===")
         print("VITE_FIREBASE_PROJECT_ID is not configured in .env.")
@@ -137,8 +142,8 @@ def main():
         print("=========================\n")
         return
         
-    print(f"Connecting to Firestore Project: {project_id}...")
-    answers = fetch_unprocessed_answers(project_id)
+    print(f"Connecting to Firestore Project: {project_id} (Database: {database_id})...")
+    answers = fetch_unprocessed_answers(project_id, database_id)
     
     if not answers:
         print("No new user answers found.")
