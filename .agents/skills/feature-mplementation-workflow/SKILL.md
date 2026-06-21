@@ -1,5 +1,5 @@
 ---
-name: ai-feedback-sync
+name: feature-mplementation-workflow
 description: Syncs client choices from the Firestore database and posts next design questions for iterative code updates.
 ---
 
@@ -12,7 +12,7 @@ Use this skill to fetch client selections from the Firestore database and post t
 ### 1. Automated Feedback Sync Workflow
 Run the automated sync script from the root directory to query Firestore for new client feature choices, mark them as processed, create corresponding Jira issues under the `KAN` project, and post the next feature question:
 ```bash
-python3 .agents/skills/ai-feedback-sync/scripts/sync_workflow.py
+python3 .agents/skills/feature-mplementation-workflow/scripts/sync_workflow.py
 ```
 
 ### 2. Manual Fetch User Choices
