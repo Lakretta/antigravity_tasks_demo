@@ -6,19 +6,20 @@ import subprocess
 # Ensure we can import fetch_user_answers from current directory
 sys.path.append(os.path.dirname(__file__))
 try:
-    from fetch_user_answers import fetch_unprocessed_answers, mark_answer_processed, post_next_question, get_project_id
+    from fetch_user_answers import fetch_unprocessed_answers, mark_answer_processed, post_next_question, get_project_id, get_database_id, load_env
 except ImportError as e:
     print(f"Error importing fetch_user_answers: {e}")
     sys.exit(1)
 
 def main():
     project_id = get_project_id()
+    database_id = get_database_id()
     if not project_id:
         print("[SYNC] Error: VITE_FIREBASE_PROJECT_ID is not configured in .env.")
         sys.exit(1)
 
-    print(f"[SYNC] Connecting to Firestore Project: {project_id}...")
-    answers = fetch_unprocessed_answers(project_id)
+    print(f"[SYNC] Connecting to Firestore Project: {project_id} (Database: {database_id})...")
+    answers = fetch_unprocessed_answers(project_id, database_id)
 
     if not answers:
         print("[SYNC] No new user answers found.")
@@ -48,11 +49,13 @@ def main():
             f"- Deploy updates to Firebase hosting."
         )
         
+        env = load_env()
+        jira_project = env.get('JIRA_PROJECT_KEY', 'AGENT')
         try:
             subprocess.run([
                 sys.executable,
                 helper_path,
-                '--project', 'KAN',
+                '--project', jira_project,
                 '--summary', f"Implement feature: {feature}",
                 '--desc', desc,
                 '--type', 'Task',
@@ -109,7 +112,7 @@ def main():
 
         print(f"[SYNC] Posting next question '{next_q_id}' to Firestore...")
         try:
-            post_next_question(project_id, next_q_id, next_q_text, next_options)
+            post_next_question(project_id, next_q_id, next_q_text, next_options, database_id)
             print("[SYNC] Next question posted successfully.")
         except Exception as e:
             print(f"[SYNC ERROR] Failed to post next question: {e}")
