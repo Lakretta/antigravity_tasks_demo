@@ -1,5 +1,5 @@
 ---
-name: google-tasks-modifier
+name: web-application-modifier
 description: Guides the safe, design-compliant modification of the Google Tasks custom web application codebase (React/Vite).
 ---
 
