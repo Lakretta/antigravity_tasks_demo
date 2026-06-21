@@ -3,8 +3,8 @@ import os
 import sys
 import subprocess
 
-# Ensure we can import fetch_user_answers from root
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
+# Ensure we can import fetch_user_answers from current directory
+sys.path.append(os.path.dirname(__file__))
 try:
     from fetch_user_answers import fetch_unprocessed_answers, mark_answer_processed, post_next_question, get_project_id
 except ImportError as e:

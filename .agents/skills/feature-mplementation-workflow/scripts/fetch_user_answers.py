@@ -7,8 +7,18 @@ import urllib.parse
 
 def load_env():
     env_vars = {}
-    env_path = os.path.join(os.path.dirname(__file__), '.env')
-    if os.path.exists(env_path):
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), '.env'),
+        os.path.join(os.path.dirname(__file__), '../../../../.env'),
+        os.path.join(os.getcwd(), '.env')
+    ]
+    env_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            env_path = path
+            break
+            
+    if env_path and os.path.exists(env_path):
         with open(env_path, 'r') as f:
             for line in f:
                 line = line.strip()

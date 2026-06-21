@@ -4,7 +4,7 @@ import json
 import urllib.request
 
 # Ensure we can load env
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../.agents/skills/feature-mplementation-workflow/scripts/')))
 from fetch_user_answers import load_env, get_project_id, get_database_id, make_firestore_request
 
 def clean_collection(project_id, database_id, collection_id):

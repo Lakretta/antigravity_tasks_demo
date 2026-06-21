@@ -2,7 +2,7 @@ import os
 import sys
 
 # Ensure we can load env
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../.agents/skills/feature-mplementation-workflow/scripts/')))
 from fetch_user_answers import post_next_question, get_project_id, get_database_id
 
 def main():

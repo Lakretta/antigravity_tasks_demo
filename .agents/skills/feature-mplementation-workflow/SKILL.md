@@ -16,13 +16,13 @@ python3 .agents/skills/feature-mplementation-workflow/scripts/sync_workflow.py
 ```
 
 ### 2. Manual Fetch User Choices
-Run `python3 fetch_user_answers.py` from the root directory to manually view and process responses in the terminal.
+Run `python3 .agents/skills/feature-mplementation-workflow/scripts/fetch_user_answers.py` to manually view and process responses in the terminal.
 
 ### 3. Manual Update Question in Firestore
 You can use `fetch_user_answers.py` import utilities to push the next question and its options manually:
 ```python
 import sys
-sys.path.append('.')
+sys.path.append('.agents/skills/feature-mplementation-workflow/scripts')
 from fetch_user_answers import post_next_question, get_project_id
 
 project_id = get_project_id()
