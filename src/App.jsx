@@ -85,7 +85,7 @@ function App() {
   useEffect(() => {
     const activeQuestion = aiQuestions[0];
     if (!activeQuestion) {
-      setAnswers([]);
+      setAnswers(null);
       setHasVoted(false);
       return;
     }
