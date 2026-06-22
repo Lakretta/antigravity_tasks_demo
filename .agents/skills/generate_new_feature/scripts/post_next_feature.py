@@ -6,7 +6,7 @@ import argparse
 # Ensure we can import from feature_implementation_workflow/scripts
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../feature_implementation_workflow/scripts')))
 try:
-    from fetch_user_answers import post_feature, get_project_id, get_database_id, make_firestore_request
+    from firestore_client import post_feature, get_project_id, get_database_id, make_firestore_request
 except ImportError as e:
     print(f"Error importing firestore utilities: {e}")
     sys.exit(1)

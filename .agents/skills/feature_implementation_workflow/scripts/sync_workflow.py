@@ -4,10 +4,10 @@ import sys
 import subprocess
 import argparse
 
-# Ensure we can import fetch_user_answers from current directory
+# Ensure we can import from current directory
 sys.path.append(os.path.dirname(__file__))
 try:
-    from fetch_user_answers import (
+    from firestore_client import (
         fetch_active_features,
         fetch_answers_for_feature,
         update_feature_status,
@@ -18,7 +18,7 @@ try:
         load_env
     )
 except ImportError as e:
-    print(f"Error importing fetch_user_answers: {e}")
+    print(f"Error importing firestore_client: {e}")
     sys.exit(1)
 
 def main():
@@ -86,36 +86,7 @@ def main():
         winner = feature_votes[winning_feature_id]['feature']
         print(f"\n[SYNC] Winner: '{winner['name']}' (ID: {winner['id']}) with {max_votes} vote(s)")
 
-        # 1. Launch Jira Issue Helper to create the corresponding task
-        print(f"[SYNC] Creating Jira task for feature: '{winner['name']}'...")
-        helper_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../jira_items_manager/scripts/jira_helper.py'))
-        
-        desc = (
-            f"Implement the user-selected feature: '{winner['name']}'\n\n"
-            f"Requirements:\n"
-            f"- Decompose the feature implementation into logical steps.\n"
-            f"- Ensure the code changes conform to the Tasks Design System guidelines.\n"
-            f"- Run end-to-end-testing verification once complete.\n"
-            f"- Deploy updates to Firebase hosting."
-        )
-        
-        env = load_env()
-        jira_project = env.get('JIRA_PROJECT_KEY', 'AGENT')
-        try:
-            subprocess.run([
-                sys.executable,
-                helper_path,
-                '--project', jira_project,
-                '--summary', f"Implement feature: {winner['name']}",
-                '--desc', desc,
-                '--type', 'Task',
-                '--priority', 'Medium'
-            ], check=True)
-            print("[SYNC] Jira task successfully created.")
-        except Exception as e:
-            print(f"[SYNC ERROR] Failed to run Jira helper script: {e}")
-
-        # 2. Update winning feature status to 'implementing'
+        # 1. Update winning feature status to 'implementing'
         print(f"[SYNC] Updating status of '{winner['id']}' to 'implementing' in Firestore...")
         update_feature_status(project_id, winner['id'], 'implementing', database_id=database_id)
 
