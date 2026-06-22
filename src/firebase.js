@@ -77,7 +77,7 @@ if (!localStorage.getItem('mock-lists')) {
 
 if (!localStorage.getItem('mock-tasks')) {
   mockDb.set('mock-tasks', [
-    { id: '1', listId: 'default', title: 'Welcome to Google Tasks clone!', notes: 'This is a demo of Google Antigravity capability. Check tasks off to complete them.', completed: false, dueDate: '', createdAt: Date.now() },
+    { id: '1', listId: 'default', title: 'Welcome to Tasks!', notes: 'This is a demo of Google Antigravity capability. Check tasks off to complete them.', completed: false, dueDate: '', createdAt: Date.now() },
     { id: '2', listId: 'default', title: 'Explore the AI feedback loop', notes: 'Look at the Gemini assistant sidebar on the right. You can choose features to build.', completed: false, dueDate: '', createdAt: Date.now() + 1 }
   ]);
 }

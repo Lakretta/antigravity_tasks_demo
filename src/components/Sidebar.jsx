@@ -34,7 +34,7 @@ export default function Sidebar({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px 16px 8px', borderBottom: '1px solid var(--border-color)' }}>
         <ListTodo size={24} color="var(--color-brand)" />
-        <span style={{ fontSize: '18px', fontWeight: '500', letterSpacing: '-0.2px' }}>Google Tasks</span>
+        <span style={{ fontSize: '18px', fontWeight: '500', letterSpacing: '-0.2px' }}>Tasks</span>
       </div>
 
       {/* List items */}

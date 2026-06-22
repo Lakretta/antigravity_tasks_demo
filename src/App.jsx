@@ -379,7 +379,7 @@ function App() {
         dbMode={dbMode}
       />
 
-      {/* CENTER PANEL: Google Tasks Board */}
+      {/* CENTER PANEL: Tasks Board */}
       <main style={{
         flex: 1,
         backgroundColor: 'var(--bg-primary)',
