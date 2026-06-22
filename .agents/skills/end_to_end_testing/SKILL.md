@@ -1,6 +1,7 @@
 ---
-name: browser-testing
-description: Guides browser-based QA automation and visual/functional verification of web components.
+name: testing-end-to-end
+description: >-
+  Automates browser-based QA verification and end-to-end testing of React/Vite web components. Use when validating new user interfaces, styles, or interactive elements, taking verification screenshots, or checking for JS console errors. Don't use for unit testing backend code or general script writing.
 ---
 
 # Browser Testing Skill
@@ -40,10 +41,10 @@ If Chrome DevTools MCP is not present or if you want to run a script to watch br
 
 ```bash
 # Run in visual (headful) mode (default: opens a browser window and runs visual tasks slowly)
-node .agents/skills/browser-testing/scripts/test_runner.cjs --url http://localhost:5173
+node .agents/skills/end_to_end_testing/scripts/test_runner.cjs --url http://localhost:5173
 
 # Run in headless background mode (for silent automated background runs)
-node .agents/skills/browser-testing/scripts/test_runner.cjs --url http://localhost:5173 --headless --screenshot artifacts/test_result.png
+node .agents/skills/end_to_end_testing/scripts/test_runner.cjs --url http://localhost:5173 --headless --screenshot artifacts/test_result.png
 ```
 
 #### Prerequisite Installation

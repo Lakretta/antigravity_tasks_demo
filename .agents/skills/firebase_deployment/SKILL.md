@@ -1,6 +1,7 @@
 ---
-name: firebase-deploy
-description: Compiles the frontend assets and deploys them to Firebase Hosting.
+name: deploying-to-firebase
+description: >-
+  Builds production frontend assets and deploys them to Firebase Hosting. Use when shipping verified code to production or staging sites, or troubleshooting deployment credential errors. Don't use for provisioning database infrastructure.
 ---
 
 # Firebase Deployment Skill
@@ -13,7 +14,7 @@ Use this skill when deploying updates to Firebase Hosting.
 To compile the production bundle and deploy it to hosting in a single command:
 
 ```bash
-node .agents/skills/firebase-deploy/scripts/deploy.cjs
+node .agents/skills/firebase_deployment/scripts/deploy.cjs
 ```
 
 The script automatically executes compilation verification builds and deploys static assets.

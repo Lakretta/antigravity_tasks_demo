@@ -5,7 +5,7 @@ import urllib.request
 import time
 
 # Ensure we can load env
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../.agents/skills/feature-mplementation-workflow/scripts/')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../.agents/skills/feature_implementation_workflow/scripts/')))
 from fetch_user_answers import load_env, get_project_id, get_database_id, make_firestore_request
 
 def seed_answers():

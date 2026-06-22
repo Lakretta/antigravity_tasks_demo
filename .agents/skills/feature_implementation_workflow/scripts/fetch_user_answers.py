@@ -117,9 +117,9 @@ def mark_answer_processed(project_id, doc_path, answer_data):
     return make_firestore_request(url, data=doc_payload, method='PATCH')
 
 def post_next_question(project_id, question_id, question_text, options, database_id='(default)'):
+    if not project_id:
+        return None
     url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions/{question_id}"
-    
-    # Deactivate other questions first by querying and patching (omitted for brevity, or we clean up)
     
     doc_payload = {
         'fields': {
@@ -131,15 +131,76 @@ def post_next_question(project_id, question_id, question_text, options, database
                 }
             },
             'active': {'booleanValue': True},
-            'createdAt': {'integerValue': str(int(urllib.parse.time.time() * 1000) if hasattr(urllib.parse, 'time') else 1700000000000)}
+            'status': {'stringValue': 'voting'}
         }
     }
     
-    # Quick fix for time in pure python without importing time
     import time
-    doc_payload['fields']['createdAt']['integerValue'] = str(int(time.time() * 1000))
+    doc_payload['fields']['createdAt'] = {'integerValue': str(int(time.time() * 1000))}
     
     return make_firestore_request(url, data=doc_payload, method='PATCH') # PATCH allows overwrite if exists
+
+def fetch_active_question(project_id, database_id='(default)'):
+    if not project_id:
+        return None
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions"
+    result = make_firestore_request(url)
+    if not result or 'documents' not in result:
+        return None
+    
+    for doc in result['documents']:
+        fields = doc.get('fields', {})
+        active = fields.get('active', {}).get('booleanValue', False)
+        if active:
+            # Parse options
+            options_val = fields.get('options', {}).get('arrayValue', {}).get('values', [])
+            options = [opt.get('stringValue', '') for opt in options_val]
+            return {
+                'id': doc.get('name', '').split('/')[-1],
+                'path': doc.get('name', ''),
+                'question': fields.get('question', {}).get('stringValue', ''),
+                'options': options,
+                'status': fields.get('status', {}).get('stringValue', 'voting')
+            }
+    return None
+
+def fetch_answers_for_question(project_id, question_id, database_id='(default)'):
+    if not project_id:
+        return []
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/answers"
+    result = make_firestore_request(url)
+    if not result or 'documents' not in result:
+        return []
+    
+    answers = []
+    for doc in result['documents']:
+        fields = doc.get('fields', {})
+        q_id = fields.get('questionId', {}).get('stringValue', '')
+        if q_id == question_id:
+            answers.append({
+                'id': doc.get('name', '').split('/')[-1],
+                'path': doc.get('name', ''),
+                'questionId': q_id,
+                'selectedOptionIndex': int(fields.get('selectedOptionIndex', {}).get('integerValue', 0)),
+                'selectedOptionText': fields.get('selectedOptionText', {}).get('stringValue', ''),
+                'submittedAt': int(fields.get('submittedAt', {}).get('integerValue', 0)),
+                'processed': fields.get('processed', {}).get('booleanValue', False)
+            })
+    answers.sort(key=lambda x: x['submittedAt'])
+    return answers
+
+def update_question_status(project_id, question_id, active, status, database_id='(default)'):
+    if not project_id:
+        return None
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions/{question_id}?updateMask.fieldPaths=active&updateMask.fieldPaths=status"
+    doc_payload = {
+        'fields': {
+            'active': {'booleanValue': active},
+            'status': {'stringValue': status}
+        }
+    }
+    return make_firestore_request(url, data=doc_payload, method='PATCH')
+
 
 def main():
     project_id = get_project_id()
@@ -153,13 +214,39 @@ def main():
         return
         
     print(f"Connecting to Firestore Project: {project_id} (Database: {database_id})...")
+    
+    # 1. Show active question & vote tally
+    active_q = fetch_active_question(project_id, database_id)
+    if active_q:
+        print("\n=== ACTIVE QUESTION ===")
+        print(f"Question: {active_q['question']}")
+        print(f"ID:       {active_q['id']}")
+        print(f"Status:   {active_q['status']}")
+        
+        votes = fetch_answers_for_question(project_id, active_q['id'], database_id)
+        print(f"Total Votes: {len(votes)}")
+        vote_counts = {opt: 0 for opt in active_q['options']}
+        for ans in votes:
+            opt_text = ans['selectedOptionText']
+            if opt_text in vote_counts:
+                vote_counts[opt_text] += 1
+            else:
+                vote_counts[opt_text] = 1 # custom options
+                
+        for opt_text, count in vote_counts.items():
+            print(f"  - '{opt_text}': {count} vote(s)")
+        print("=======================\n")
+    else:
+        print("\nNo active question found in Firestore.\n")
+
+    # 2. Show unprocessed user choices
     answers = fetch_unprocessed_answers(project_id, database_id)
     
     if not answers:
-        print("No new user answers found.")
+        print("No new unprocessed user answers found.")
         return
         
-    print(f"\nFound {len(answers)} unprocessed user choice(s):")
+    print(f"Found {len(answers)} unprocessed user choice(s):")
     for i, ans in enumerate(answers, 1):
         print(f"{i}. Question ID: {ans['questionId']}")
         print(f"   Selection: [{ans['selectedOptionIndex']}] {ans['selectedOptionText']}")

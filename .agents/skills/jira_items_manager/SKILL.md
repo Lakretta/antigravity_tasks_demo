@@ -1,6 +1,7 @@
 ---
-name: jira-issue-creator
-description: Decomposes complex user requests into smaller tasks and creates corresponding issues in Jira via the Jira MCP server or REST API.
+name: managing-jira-items
+description: >-
+  Decomposes user feature requests into detailed, structured work items (Stories, Tasks, Bugs) and registers them in Jira. Use when breaking down complex prompts, tracking task lifecycles, or transitioning issues to Done. Don't use for general project management discussion.
 ---
 
 # Jira Issue Creator Skill
@@ -47,17 +48,17 @@ If the Jira MCP server is not registered, use the fallback Python script:
 
 #### Create Issue:
 ```bash
-python3 .agents/skills/jira-issue-creator/scripts/jira_helper.py --project PROJ --summary "Summary Title" --desc "Description text" --type "Task" --priority "Medium"
+python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --project PROJ --summary "Summary Title" --desc "Description text" --type "Task" --priority "Medium"
 ```
 
 #### Post Comment:
 ```bash
-python3 .agents/skills/jira-issue-creator/scripts/jira_helper.py --action comment --issue KAN-123 --comment "Your comment text"
+python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action comment --issue KAN-123 --comment "Your comment text"
 ```
 
 #### Transition Issue (e.g. to Done):
 ```bash
-python3 .agents/skills/jira-issue-creator/scripts/jira_helper.py --action transition --issue KAN-123 --transition Done
+python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transition --issue KAN-123 --transition Done
 ```
 
 #### Environment Variables Config
