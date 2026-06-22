@@ -17,11 +17,12 @@ Run the automated sync script to query Firestore for the active question, aggreg
 python3 .agents/skills/feature_implementation_workflow/scripts/sync_workflow.py --action start
 ```
 
-### 2. Complete Implementation
-Once a feature has been implemented, tested, and deployed, mark the feature's question status as `implemented` and deactivate it in Firestore:
+### 2. Complete Implementation & Replenish Poll Options
+Once a feature has been implemented, verified, and deployed, mark the feature option as implemented in the active question document. This removes it from the UI voting choices, moves it into the implemented features array, and replenishes the voting options with a new choice to keep at least 3 active options:
 ```bash
-python3 .agents/skills/feature_implementation_workflow/scripts/sync_workflow.py --action complete --question_id {question_id}
+python3 .agents/skills/feature_implementation_workflow/scripts/sync_workflow.py --action complete --question_id {question_id} --feature_text "{feature_text}"
 ```
+
 
 ### 3. Manual Fetch User Choices
 Run `python3 .agents/skills/feature_implementation_workflow/scripts/fetch_user_answers.py` to manually view response documents in the terminal.

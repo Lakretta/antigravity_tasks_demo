@@ -11,6 +11,7 @@ try:
         fetch_active_question,
         fetch_answers_for_question,
         update_question_status,
+        replenish_and_complete_question,
         mark_answer_processed,
         get_project_id,
         get_database_id,
@@ -25,6 +26,7 @@ def main():
     parser.add_argument('--action', choices=['start', 'complete'], default='start',
                         help='Action to perform: "start" (find active feature with max votes and start implementation) or "complete" (mark feature status as implemented).')
     parser.add_argument('--question_id', help='Question ID to mark as implemented (required for "complete" action).')
+    parser.add_argument('--feature_text', help='Feature text to mark as implemented (required for "complete" action).')
     args = parser.parse_args()
 
     project_id = get_project_id()
@@ -121,13 +123,16 @@ def main():
         if not args.question_id:
             print("[SYNC ERROR] Question ID (--question_id) is required when action is 'complete'.")
             sys.exit(1)
+        if not args.feature_text:
+            print("[SYNC ERROR] Feature text (--feature_text) is required when action is 'complete'.")
+            sys.exit(1)
 
-        print(f"[SYNC] Marking question '{args.question_id}' as implemented in Firestore...")
-        res = update_question_status(project_id, args.question_id, active=False, status='implemented', database_id=database_id)
+        print(f"[SYNC] Marking feature '{args.feature_text}' as implemented and replenishing active options...")
+        res = replenish_and_complete_question(project_id, args.question_id, args.feature_text, database_id=database_id)
         if res:
-            print(f"[SYNC] Question '{args.question_id}' successfully set to status 'implemented' and deactivated.")
+            print(f"[SYNC] Feature '{args.feature_text}' successfully implemented. Active poll updated and status set to 'voting'.")
         else:
-            print(f"[SYNC ERROR] Failed to update question status in Firestore.")
+            print(f"[SYNC ERROR] Failed to complete feature implementation and replenish active options.")
             sys.exit(1)
 
 if __name__ == '__main__':

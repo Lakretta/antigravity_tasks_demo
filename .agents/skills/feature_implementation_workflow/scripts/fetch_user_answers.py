@@ -155,11 +155,15 @@ def fetch_active_question(project_id, database_id='(default)'):
             # Parse options
             options_val = fields.get('options', {}).get('arrayValue', {}).get('values', [])
             options = [opt.get('stringValue', '') for opt in options_val]
+            # Parse implemented features list
+            implemented_val = fields.get('implemented', {}).get('arrayValue', {}).get('values', [])
+            implemented = [opt.get('stringValue', '') for opt in implemented_val]
             return {
                 'id': doc.get('name', '').split('/')[-1],
                 'path': doc.get('name', ''),
                 'question': fields.get('question', {}).get('stringValue', ''),
                 'options': options,
+                'implemented': implemented,
                 'status': fields.get('status', {}).get('stringValue', 'voting')
             }
     return None
@@ -200,6 +204,78 @@ def update_question_status(project_id, question_id, active, status, database_id=
         }
     }
     return make_firestore_request(url, data=doc_payload, method='PATCH')
+
+def replenish_and_complete_question(project_id, question_id, implemented_feature, database_id='(default)'):
+    if not project_id:
+        return None
+    
+    # 1. Fetch current question details
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions/{question_id}"
+    question_doc = make_firestore_request(url)
+    if not question_doc:
+        print(f"[SYNC ERROR] Question '{question_id}' not found.")
+        return None
+        
+    fields = question_doc.get('fields', {})
+    
+    options_val = fields.get('options', {}).get('arrayValue', {}).get('values', [])
+    options = [opt.get('stringValue', '') for opt in options_val]
+    
+    implemented_val = fields.get('implemented', {}).get('arrayValue', {}).get('values', [])
+    implemented = [opt.get('stringValue', '') for opt in implemented_val]
+    
+    # 2. Update options and implemented lists
+    # Remove from options (case-insensitive)
+    new_options = [opt for opt in options if opt.strip().lower() != implemented_feature.strip().lower()]
+    
+    # Add to implemented list if not already there
+    if not any(imp.strip().lower() == implemented_feature.strip().lower() for imp in implemented):
+        implemented.append(implemented_feature)
+        
+    # 3. Replenish options if count < 3
+    import sys
+    import os
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../generate_new_feature/scripts')))
+    try:
+        from feature_pool import get_next_available_feature
+    except ImportError as e:
+        print(f"[SYNC ERROR] Could not import feature_pool: {e}")
+        # Inline fallback list
+        def get_next_available_feature(curr, imp):
+            pool = ["Calendar view", "Export tasks", "Recurring tasks", "Task search", "Category tags", "Task notes", "Shared collaboration"]
+            used = set(c.lower() for c in curr) | set(i.lower() for i in imp)
+            for p in pool:
+                if p.lower() not in used:
+                    return p
+            return f"Custom Feature Addition v{len(imp) + 1}"
+            
+    while len(new_options) < 3:
+        next_feat = get_next_available_feature(new_options, implemented)
+        print(f"[SYNC] Replenishing active options with: '{next_feat}'")
+        new_options.append(next_feat)
+        
+    # 4. Patch document in Firestore
+    patch_url = f"{url}?updateMask.fieldPaths=options&updateMask.fieldPaths=implemented&updateMask.fieldPaths=active&updateMask.fieldPaths=status"
+    
+    doc_payload = {
+        'fields': {
+            'options': {
+                'arrayValue': {
+                    'values': [{'stringValue': opt} for opt in new_options]
+                }
+            },
+            'implemented': {
+                'arrayValue': {
+                    'values': [{'stringValue': imp} for imp in implemented]
+                }
+            },
+            'active': {'booleanValue': True},
+            'status': {'stringValue': 'voting'}
+        }
+    }
+    
+    return make_firestore_request(patch_url, data=doc_payload, method='PATCH')
+
 
 
 def main():
