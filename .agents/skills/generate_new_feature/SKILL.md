@@ -12,13 +12,12 @@ Use this skill when you need to decide, formulate, and post the next iteration's
 
 1. **Keep Features Simple & Incremental**: Design feature additions that fit the current Google Tasks structure and can be built cleanly.
 2. **List of Preferable Features**:
-   - **Calendar View**: Plotted timeline showing tasks on calendar dates.
-   - **Export Tasks**: Download list of tasks as CSV, JSON, or Google Sheets format.
-   - **Recurring Tasks**: Schedule repeating tasks (Daily, Weekly, Monthly).
    - **Task Search**: Filter tasks instantly with a text search bar.
-   - **Category Tags**: Tag hierarchy or nested tag collections.
    - **Task Notes**: Rich text descriptions or checklists inside a task.
-   - **Shared Collaboration**: Real-time list sharing and invitations.
+   - **Calendar View**: Plotted timeline showing tasks on calendar dates.
+   - **Export Tasks**: Download list of tasks as CSV, JSON
+   - **Recurring Tasks**: Schedule repeating tasks (Daily, Weekly, Monthly).
+   - **Category Tags**: Tag hierarchy or nested tag collections.
 3. **Fallback to Custom Features**: If all of the above preferable features are already implemented in the application, propose custom innovative suggestions based on current application workflows and requirements.
 
 ---

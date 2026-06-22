@@ -84,37 +84,11 @@ def main():
     # 3. Delete all lists
     delete_all_in_collection(project_id, database_id, 'lists')
 
-    # Recreate the default list
-    print("Recreating default 'My Tasks' list...")
-    create_document(
-        project_id, 
-        database_id, 
-        'lists', 
-        'default', 
-        {
-            'id': {'stringValue': 'default'},
-            'name': {'stringValue': 'My Tasks'},
-            'createdAt': {'integerValue': str(int(time.time() * 1000))}
-        }
-    )
-
     # 4. Delete old questions collection
     delete_all_in_collection(project_id, database_id, 'questions')
 
     # 5. Delete feature_selection collection
     delete_all_in_collection(project_id, database_id, 'feature_selection')
-
-    # 6. Re-seed feature_selection with 3 active features using post_next_feature.py
-    print("Seeding initial active features...")
-    script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../.agents/skills/generate_new_feature/scripts/post_next_feature.py'))
-    
-    # Run the replenishment script
-    try:
-        import subprocess
-        subprocess.run([sys.executable, script_path], check=True)
-        print("Successfully replenished features pool!")
-    except Exception as e:
-        print(f"Failed to run replenishment script: {e}")
 
     print("Firestore cleanup completed successfully!")
 

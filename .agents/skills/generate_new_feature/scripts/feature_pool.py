@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 PREFERABLE_FEATURES = [
+    "Task search",
+    "Task notes",
     "Calendar view",
     "Export tasks",
     "Recurring tasks",
-    "Task search",
     "Category tags",
-    "Task notes",
     "Shared collaboration"
 ]
 
