@@ -1,7 +1,7 @@
 import AssistantHeader from './AssistantHeader';
 import PollResults from './PollResults';
 import PollChoices from './PollChoices';
-import AgentStateLog from './AgentStateLog';
+import ShareQRCode from './ShareQRCode';
 
 export default function AiAssistant({
   theme,
@@ -11,7 +11,8 @@ export default function AiAssistant({
   hasVoted,
   answers,
   handleAnswerSubmit,
-  handleCustomSubmit
+  handleCustomSubmit,
+  onClose
 }) {
   const activeFeatures = features.filter(f => f.status === 'voting' || f.status === 'implementing');
   const votingFeatures = activeFeatures.filter(f => f.status === 'voting');
@@ -42,7 +43,7 @@ export default function AiAssistant({
 
   return (
     <section style={{
-      width: '360px',
+      width: onClose ? '100%' : '360px',
       backgroundColor: 'var(--bg-secondary)',
       borderLeft: '1px solid var(--border-color)',
       display: 'flex',
@@ -51,7 +52,7 @@ export default function AiAssistant({
       height: '100%'
     }}>
       {/* Gemini Header */}
-      <AssistantHeader theme={theme} toggleTheme={toggleTheme} />
+      <AssistantHeader theme={theme} toggleTheme={toggleTheme} onClose={onClose} />
 
       {/* Content body */}
       <div style={{ flex: 1, padding: '24px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }} className="scroller">
@@ -139,8 +140,8 @@ export default function AiAssistant({
           </div>
         )}
 
-        {/* Real-time Code Agent State Logger */}
-        <AgentStateLog hasVoted={hasVoted} processedOrPendingText={processedOrPendingText} />
+        {/* Share QR Code */}
+        {!onClose && <ShareQRCode />}
       </div>
     </section>
   );

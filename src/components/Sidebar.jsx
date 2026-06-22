@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ListTodo, Trash2, Plus, Database, AlertTriangle } from 'lucide-react';
+import { ListTodo, Trash2, Plus, Database, AlertTriangle, X } from 'lucide-react';
 
 export default function Sidebar({
   lists,
@@ -7,7 +7,8 @@ export default function Sidebar({
   setActiveListId,
   handleAddList,
   handleDeleteList,
-  dbMode
+  dbMode,
+  onClose
 }) {
   const [newListTitle, setNewListTitle] = useState('');
   const [showAddList, setShowAddList] = useState(false);
@@ -24,7 +25,7 @@ export default function Sidebar({
 
   return (
     <aside style={{
-      width: '260px',
+      width: onClose ? '100%' : '260px',
       backgroundColor: 'var(--bg-primary)',
       borderRight: '1px solid var(--border-color)',
       display: 'flex',
@@ -32,9 +33,37 @@ export default function Sidebar({
       padding: '16px 8px',
       flexShrink: 0
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px 16px 8px', borderBottom: '1px solid var(--border-color)' }}>
-        <ListTodo size={24} color="var(--color-brand)" />
-        <span style={{ fontSize: '18px', fontWeight: '500', letterSpacing: '-0.2px' }}>Tasks</span>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        padding: '0 8px 16px 8px', 
+        borderBottom: '1px solid var(--border-color)',
+        width: '100%'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ListTodo size={24} color="var(--color-brand)" />
+          <span style={{ fontSize: '18px', fontWeight: '500', letterSpacing: '-0.2px' }}>Tasks</span>
+        </div>
+        {onClose && (
+          <button 
+            onClick={onClose}
+            style={{
+              padding: '4px',
+              borderRadius: '50%',
+              color: 'var(--text-secondary)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Close sidebar"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* List items */}
@@ -42,7 +71,10 @@ export default function Sidebar({
         {lists.map(list => (
           <div 
             key={list.id} 
-            onClick={() => setActiveListId(list.id)}
+            onClick={() => {
+              setActiveListId(list.id);
+              if (onClose) onClose();
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',

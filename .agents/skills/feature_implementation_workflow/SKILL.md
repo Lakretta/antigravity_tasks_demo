@@ -57,4 +57,3 @@ python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transi
    ```bash
    python3 .agents/skills/feature_implementation_workflow/scripts/sync_workflow.py --action complete --question_id {question_id} --feature_text "{feature_text}"
    ```
-

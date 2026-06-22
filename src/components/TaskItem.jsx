@@ -23,7 +23,8 @@ export default function TaskItem({
   handleRemoveTag,
   handleAddSubtask,
   getTagColor,
-  selectedTagFilter
+  selectedTagFilter,
+  isMobile
 }) {
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
@@ -51,17 +52,17 @@ export default function TaskItem({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: isSubtask ? '36px' : '0' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: isSubtask ? (isMobile ? '20px' : '36px') : '0' }}>
       {/* Main Task Item */}
       <div 
         data-testid="task-row"
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: isSubtask ? '8px 16px' : '12px 16px',
+          padding: isMobile ? (isSubtask ? '8px 8px' : '12px 8px') : (isSubtask ? '8px 16px' : '12px 16px'),
           borderRadius: '8px',
           backgroundColor: 'transparent',
-          gap: '12px',
+          gap: isMobile ? '8px' : '12px',
           borderBottom: isSubtask ? '1px solid rgba(0,0,0,0.02)' : '1px solid rgba(0,0,0,0.04)'
         }}
       >
@@ -76,7 +77,8 @@ export default function TaskItem({
             cursor: 'pointer',
             padding: 0,
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexShrink: 0
           }}
         >
           {isSubtask ? (
@@ -89,12 +91,14 @@ export default function TaskItem({
             )
           )}
         </button>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
           <span style={{ 
             fontSize: isSubtask ? '14px' : '15px', 
             color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)', 
             textAlign: 'left',
-            textDecoration: task.completed ? 'line-through' : 'none'
+            textDecoration: task.completed ? 'line-through' : 'none',
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere'
           }}>
             {task.title}
           </span>
@@ -168,7 +172,8 @@ export default function TaskItem({
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              flexShrink: 0
             }}
             title="Add subtask"
           >
@@ -188,7 +193,8 @@ export default function TaskItem({
             border: 'none',
             cursor: 'pointer',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexShrink: 0
           }}
           title="Edit due date/time"
         >
@@ -204,7 +210,8 @@ export default function TaskItem({
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            padding: '4px'
+            padding: '4px',
+            flexShrink: 0
           }}
         >
           <Trash2 size={isSubtask ? 14 : 16} />
@@ -221,6 +228,7 @@ export default function TaskItem({
           handleAddTag={handleAddTag}
           handleRemoveTag={handleRemoveTag}
           getTagColor={getTagColor}
+          isMobile={isMobile}
         />
       )}
 
@@ -240,6 +248,7 @@ export default function TaskItem({
               handleRemoveTag={handleRemoveTag}
               getTagColor={getTagColor}
               selectedTagFilter={selectedTagFilter}
+              isMobile={isMobile}
             />
           ))}
         </div>

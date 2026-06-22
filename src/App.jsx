@@ -6,6 +6,7 @@ import TagFilters from './components/TagFilters';
 import TaskInput from './components/TaskInput';
 import TaskItem from './components/TaskItem';
 import { ReminderPopup, BlockerWarning } from './components/AlertBanners';
+import { Menu, Sparkles } from 'lucide-react';
 
 function App() {
   // Theme state
@@ -37,6 +38,29 @@ function App() {
 
   // Tag states
   const [selectedTagFilter, setSelectedTagFilter] = useState(null);
+
+  // Mobile layout states
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1024;
+    }
+    return false;
+  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setIsSidebarOpen(false);
+        setIsAssistantOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Initialize theme
   useEffect(() => {
@@ -343,17 +367,72 @@ function App() {
   const activeList = lists.find(l => l.id === activeListId);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <div style={{ 
+      display: 'flex', 
+      height: '100dvh', 
+      width: '100vw', 
+      overflow: 'hidden',
+      position: 'relative'
+    }}>
       
+      {/* Sidebar Backdrop overlay for Mobile */}
+      {isMobile && isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 999,
+            backdropFilter: 'blur(2px)',
+            transition: 'opacity 0.2s ease'
+          }}
+        />
+      )}
+
+      {/* Assistant Backdrop overlay for Mobile */}
+      {isMobile && isAssistantOpen && (
+        <div 
+          onClick={() => setIsAssistantOpen(false)}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 999,
+            backdropFilter: 'blur(2px)',
+            transition: 'opacity 0.2s ease'
+          }}
+        />
+      )}
+
       {/* LEFT PANEL: Task Lists Selector */}
-      <Sidebar
-        lists={lists}
-        activeListId={activeListId}
-        setActiveListId={setActiveListId}
-        handleAddList={handleAddList}
-        handleDeleteList={handleDeleteList}
-        dbMode={dbMode}
-      />
+      <div style={isMobile ? {
+        position: 'absolute',
+        left: isSidebarOpen ? 0 : '-300px',
+        width: 'min(280px, 85vw)',
+        top: 0,
+        bottom: 0,
+        zIndex: 1000,
+        transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'flex',
+        height: '100%'
+      } : {}}>
+        <Sidebar
+          lists={lists}
+          activeListId={activeListId}
+          setActiveListId={setActiveListId}
+          handleAddList={handleAddList}
+          handleDeleteList={handleDeleteList}
+          dbMode={dbMode}
+          onClose={isMobile ? () => setIsSidebarOpen(false) : null}
+        />
+      </div>
 
       {/* CENTER PANEL: Tasks Board */}
       <main style={{
@@ -361,7 +440,7 @@ function App() {
         backgroundColor: 'var(--bg-primary)',
         display: 'flex',
         flexDirection: 'column',
-        padding: '24px 32px',
+        padding: isMobile ? '16px' : '24px 32px',
         height: '100%',
         overflowY: 'auto'
       }} className="scroller">
@@ -371,11 +450,58 @@ function App() {
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          marginBottom: '24px'
+          marginBottom: '24px',
+          gap: '12px'
         }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '400', margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-            {activeList?.name || 'My Tasks'}
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {isMobile && (
+              <button 
+                onClick={() => setIsSidebarOpen(true)} 
+                style={{ 
+                  padding: '8px', 
+                  color: 'var(--text-secondary)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Menu size={20} />
+              </button>
+            )}
+            <h1 style={{ 
+              fontSize: isMobile ? '22px' : '28px', 
+              fontWeight: '400', 
+              margin: 0, 
+              color: 'var(--text-primary)', 
+              letterSpacing: '-0.5px' 
+            }}>
+              {activeList?.name || 'My Tasks'}
+            </h1>
+          </div>
+
+          {isMobile && (
+            <button 
+              onClick={() => setIsAssistantOpen(true)} 
+              style={{ 
+                padding: '8px 12px', 
+                color: 'var(--color-brand)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--color-brand-light)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '13px',
+                fontWeight: '500'
+              }}
+            >
+              <Sparkles size={16} />
+              <span>Assistant</span>
+            </button>
+          )}
         </div>
 
         {/* Tag Filter Bar */}
@@ -408,6 +534,7 @@ function App() {
                 handleAddSubtask={handleAddSubtask}
                 getTagColor={getTagColor}
                 selectedTagFilter={selectedTagFilter}
+                isMobile={isMobile}
               />
             );
           })}
@@ -451,6 +578,7 @@ function App() {
                     handleAddSubtask={handleAddSubtask}
                     getTagColor={getTagColor}
                     selectedTagFilter={selectedTagFilter}
+                    isMobile={isMobile}
                   />
                 );
               })}
@@ -460,16 +588,30 @@ function App() {
       </main>
 
       {/* RIGHT PANEL: Gemini AI feedback sidebar */}
-      <AiAssistant
-        theme={theme}
-        toggleTheme={toggleTheme}
-        features={features}
-        submittingAnswer={submittingAnswer}
-        hasVoted={hasVoted}
-        answers={answers}
-        handleAnswerSubmit={handleAnswerSubmit}
-        handleCustomSubmit={handleCustomSubmit}
-      />
+      <div style={isMobile ? {
+        position: 'absolute',
+        right: isAssistantOpen ? 0 : '-400px',
+        width: 'min(360px, 85vw)',
+        top: 0,
+        bottom: 0,
+        zIndex: 1000,
+        transition: 'right 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'flex',
+        height: '100%',
+        backgroundColor: 'var(--bg-secondary)'
+      } : {}}>
+        <AiAssistant
+          theme={theme}
+          toggleTheme={toggleTheme}
+          features={features}
+          submittingAnswer={submittingAnswer}
+          hasVoted={hasVoted}
+          answers={answers}
+          handleAnswerSubmit={handleAnswerSubmit}
+          handleCustomSubmit={handleCustomSubmit}
+          onClose={isMobile ? () => setIsAssistantOpen(false) : null}
+        />
+      </div>
 
       {/* Embedded CSS animations */}
       <style>{`

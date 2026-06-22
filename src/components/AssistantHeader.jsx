@@ -1,6 +1,6 @@
-import { Sparkles, Moon, Sun } from 'lucide-react';
+import { Sparkles, Moon, Sun, X } from 'lucide-react';
 
-export default function AssistantHeader({ theme, toggleTheme }) {
+export default function AssistantHeader({ theme, toggleTheme, onClose }) {
   return (
     <div style={{
       padding: '16px 20px',
@@ -28,8 +28,8 @@ export default function AssistantHeader({ theme, toggleTheme }) {
         </div>
       </div>
 
-      {/* Theme toggler */}
-      <div style={{ display: 'flex', gap: '4px' }}>
+      {/* Theme toggler & Close button */}
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
         <button 
           onClick={toggleTheme}
           style={{
@@ -38,12 +38,34 @@ export default function AssistantHeader({ theme, toggleTheme }) {
             color: 'var(--text-secondary)',
             background: 'none',
             border: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
           title="Toggle Light/Dark Theme"
         >
           {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
         </button>
+        {onClose && (
+          <button 
+            onClick={onClose}
+            style={{
+              padding: '8px',
+              borderRadius: '50%',
+              color: 'var(--text-secondary)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Close Assistant"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
     </div>
   );

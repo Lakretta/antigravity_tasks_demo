@@ -3,14 +3,17 @@ import { X, Bell, AlertTriangle } from 'lucide-react';
 export function ReminderPopup({ activeReminder, onDismiss, onComplete }) {
   if (!activeReminder) return null;
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+
   return (
     <div 
       data-testid="reminder-popup"
       style={{
         position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        maxWidth: '380px',
+        bottom: isMobile ? '16px' : '24px',
+        right: isMobile ? '16px' : '24px',
+        left: isMobile ? '16px' : 'auto',
+        maxWidth: isMobile ? 'calc(100% - 32px)' : '380px',
         backgroundColor: 'var(--bg-primary)',
         border: '2px solid var(--color-brand)',
         borderRadius: '12px',
@@ -95,15 +98,18 @@ export function ReminderPopup({ activeReminder, onDismiss, onComplete }) {
 export function BlockerWarning({ blockerWarning, onClose }) {
   if (!blockerWarning || !blockerWarning.show) return null;
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+
   return (
     <div 
       data-testid="blocker-warning"
       style={{
         position: 'fixed',
-        bottom: '24px',
+        bottom: isMobile ? '16px' : '24px',
         left: '50%',
         transform: 'translateX(-50%)',
-        maxWidth: '480px',
+        width: isMobile ? 'calc(100% - 32px)' : 'auto',
+        maxWidth: isMobile ? 'calc(100% - 32px)' : '480px',
         backgroundColor: 'rgba(217, 48, 37, 0.15)', // Glassmorphic translucent red
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',

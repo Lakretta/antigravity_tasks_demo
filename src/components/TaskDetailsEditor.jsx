@@ -7,22 +7,25 @@ export default function TaskDetailsEditor({
   handleUpdateDueTime,
   handleAddTag,
   handleRemoveTag,
-  getTagColor
+  getTagColor,
+  isMobile
 }) {
   const [tagInput, setTagInput] = useState('');
 
   return (
     <div style={{
       display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      flexWrap: 'wrap',
       gap: '12px',
-      paddingLeft: '44px',
+      paddingLeft: isMobile ? '16px' : '44px',
       paddingRight: '16px',
       paddingTop: isSubtask ? '4px' : '6px',
       paddingBottom: isSubtask ? '8px' : '12px',
       backgroundColor: 'rgba(0,0,0,0.01)',
       borderBottom: '1px solid rgba(0,0,0,0.02)'
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isSubtask ? '3px' : '4px', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isSubtask ? '3px' : '4px', alignItems: 'flex-start', width: isMobile ? '100%' : 'auto' }}>
         <label style={{ fontSize: isSubtask ? '10px' : '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>Due Date</label>
         <input 
           type="date" 
@@ -36,11 +39,12 @@ export default function TaskDetailsEditor({
             backgroundColor: 'var(--bg-primary)',
             color: 'var(--text-primary)',
             fontSize: isSubtask ? '11px' : '12.5px',
-            outline: 'none'
+            outline: 'none',
+            width: isMobile ? '100%' : 'auto'
           }}
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isSubtask ? '3px' : '4px', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isSubtask ? '3px' : '4px', alignItems: 'flex-start', width: isMobile ? '100%' : 'auto' }}>
         <label style={{ fontSize: isSubtask ? '10px' : '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>Due Time</label>
         <input 
           type="time" 
@@ -54,12 +58,13 @@ export default function TaskDetailsEditor({
             backgroundColor: 'var(--bg-primary)',
             color: 'var(--text-primary)',
             fontSize: isSubtask ? '11px' : '12.5px',
-            outline: 'none'
+            outline: 'none',
+            width: isMobile ? '100%' : 'auto'
           }}
         />
       </div>
       {/* Tag Editor */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isSubtask ? '3px' : '4px', alignItems: 'flex-start', flex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isSubtask ? '3px' : '4px', alignItems: 'flex-start', flex: 1, width: isMobile ? '100%' : 'auto' }}>
         <label style={{ fontSize: isSubtask ? '10px' : '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>Tags</label>
         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '4px' }}>
           {task.tags && task.tags.map(t => {
