@@ -46,6 +46,11 @@ def make_request(url, method="GET", payload=None, auth_b64=None):
             return json.loads(res_content) if res_content else {}
     except Exception as e:
         print(f"[JIRA ERROR] Request failed: {e}")
+        if hasattr(e, "read"):
+            try:
+                print(f"[JIRA ERROR] Error Details: {e.read().decode('utf-8')}")
+            except Exception:
+                pass
         return None
 
 def main():

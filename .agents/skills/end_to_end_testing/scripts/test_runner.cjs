@@ -49,12 +49,18 @@ if (!fs.existsSync(artifactsDir)) {
     await page.waitForSelector('body', { timeout: 5000 });
     await new Promise(r => setTimeout(r, 2000));
 
-    // Cleanup existing tasks
-    console.log("Cleaning up existing tasks...");
+    // Cleanup existing test tasks if any
+    console.log("Cleaning up existing test tasks...");
     await page.evaluate(() => {
-      const deleteButtons = document.querySelectorAll('button[data-testid="delete-task-btn"]');
-      for (const btn of deleteButtons) {
-        btn.click();
+      const rows = document.querySelectorAll('[data-testid="task-row"]');
+      for (const row of rows) {
+        const textContent = row.textContent || '';
+        if (textContent.includes('Tag Test Task') || textContent.includes('Untagged Task')) {
+          const deleteBtn = row.querySelector('[data-testid="delete-task-btn"]');
+          if (deleteBtn) {
+            deleteBtn.click();
+          }
+        }
       }
     });
     await new Promise(r => setTimeout(r, 2000));
@@ -117,12 +123,18 @@ if (!fs.existsSync(artifactsDir)) {
     console.log(`Saving Step 3 screenshot: ${screenshot3}`);
     await page.screenshot({ path: screenshot3 });
 
-    // Delete tasks to clean up
-    console.log("Cleaning up...");
+    // Delete test tasks to clean up
+    console.log("Cleaning up test tasks...");
     await page.evaluate(() => {
-      const deleteButtons = document.querySelectorAll('button[data-testid="delete-task-btn"]');
-      for (const btn of deleteButtons) {
-        btn.click();
+      const rows = document.querySelectorAll('[data-testid="task-row"]');
+      for (const row of rows) {
+        const textContent = row.textContent || '';
+        if (textContent.includes('Tag Test Task') || textContent.includes('Untagged Task')) {
+          const deleteBtn = row.querySelector('[data-testid="delete-task-btn"]');
+          if (deleteBtn) {
+            deleteBtn.click();
+          }
+        }
       }
     });
     await new Promise(r => setTimeout(r, 1500));

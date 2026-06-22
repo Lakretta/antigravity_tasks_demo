@@ -7,6 +7,10 @@
     {
       "database": "tasks-db",
       "rules": "firestore.rules"
+    },
+    {
+      "database": "tasks-e2e",
+      "rules": "firestore.rules"
     }
   ],
   "hosting": {

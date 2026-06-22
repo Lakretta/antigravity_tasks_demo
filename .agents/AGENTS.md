@@ -49,5 +49,5 @@ To ensure automated E2E testing (Puppeteer) remains fully functional, you must p
    node .agents/skills/end_to_end_testing/scripts/test_runner.cjs --url http://localhost:5173
    ```
 4. **Fix failures and re-test**: If the test fails, debug the issues, fix the code, and run the test again until it passes successfully.
-5. **Deploy after successful implementation**: Once the feature is successfully implemented and E2E tests pass, deploy the application using the `firebase_deployment` skill.
-6. **Mark implemented and close Jira task**: Once verified and deployed to Firebase Hosting, transition the corresponding Jira task to Done, post the walkthrough contents as a comment, and complete the sync.
+5. **Deploy after successful implementation**: Once the feature is successfully implemented and local E2E tests pass (from step 3), deploy the application using the `firebase_deployment` skill. Do not re-run E2E tests during or after deployment.
+6. **Mark implemented and close Jira task**: Once deployed to Firebase Hosting, transition the corresponding Jira task to Done, post the walkthrough contents as a comment, and complete the sync. No additional browser testing should be run on the deployed URL.

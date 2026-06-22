@@ -49,11 +49,12 @@ python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transi
    node .agents/skills/end_to_end_testing/scripts/test_runner.cjs --url http://localhost:5173
    ```
 4. **Fix failures and re-test**: If the test fails, debug the issues, fix the code, and run the test again until it passes successfully.
-5. **Deploy after successful implementation**: Once the feature is successfully implemented and E2E tests pass, deploy the application using the firebase_deployment skill:
+5. **Deploy after successful implementation**: Once the feature is successfully implemented and local E2E tests pass (from step 3), deploy the application using the firebase_deployment skill (do not re-run E2E tests):
    ```bash
    node .agents/skills/firebase_deployment/scripts/deploy.cjs
    ```
-6. **Mark implemented and close Jira task**: Once verified and deployed to Firebase Hosting, transition the corresponding Jira task to Done, post the walkthrough contents as a comment, and complete the sync:
+6. **Mark implemented and close Jira task**: Once deployed to Firebase Hosting, transition the corresponding Jira task to Done, post the walkthrough contents as a comment, and complete the sync (do not run E2E tests on the deployed URL):
    ```bash
    python3 .agents/skills/feature_implementation_workflow/scripts/sync_workflow.py --action complete --question_id {question_id} --feature_text "{feature_text}"
    ```
+7. **Do not clean the database**: Do not run database cleanup scripts (such as `cleanup_firestore.py`) or perform any bulk task deletions during the workflow, as we must preserve the user's active lists and tasks.
