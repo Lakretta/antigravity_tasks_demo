@@ -25,23 +25,29 @@ Use this skill when you need to decide, formulate, and post the next iteration's
 
 ## Operations Guide
 
-### 1. Seeding / Posting Next Poll to Firestore
-To post the next poll questions to the database:
+### 1. Seeding / Replenishing Features in Firestore
+To replenish the active features in the pool back to 3 items, run the helper script in **automated mode** (without any arguments):
 
-1. Identify the next Question Version suffix (e.g., if the last processed question was `feature_selection_v5`, your next ID will be `feature_selection_v6`).
-2. Run the helper script with the target ID, question title, and selectable option strings:
+```bash
+python3 .agents/skills/generate_new_feature/scripts/post_next_feature.py
+```
+
+The script will query the current active features (status `voting` or `implementing`) in the database. If there are fewer than 3 active features, it automatically selects the next un-implemented features from the preferable list (or custom pool) and adds them with status `voting` until the active pool size is exactly 3.
+
+---
+
+### 2. Posting a Specific Feature Document
+To manually add a specific feature choice to the voting pool, run the helper script with the target ID and feature Name:
 
 ```bash
 python3 .agents/skills/generate_new_feature/scripts/post_next_feature.py \
-  --id {question_id} \
-  --question "{question_text}" \
-  --options "{option_1}" "{option_2}" "{option_3}"
+  --id {feature_id} \
+  --name "{feature_name}"
 ```
 
 #### Example Usage:
 ```bash
 python3 .agents/skills/generate_new_feature/scripts/post_next_feature.py \
-  --id feature_selection_v6 \
-  --question "What productivity feature would you like Antigravity to build next?" \
-  --options "Calendar view integration" "Export tasks to CSV / Google Sheets" "Recurring tasks (Daily, Weekly)"
+  --id calendar_view \
+  --name "Calendar view"
 ```
