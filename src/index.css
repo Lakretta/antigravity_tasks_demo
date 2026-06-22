@@ -33,8 +33,7 @@
   color-scheme: light dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-theme='dark'] {
     /* Theme colors - Dark Mode */
     --bg-primary: #1f1f1f;
     --bg-secondary: #131314;
@@ -55,7 +54,6 @@
     
     --scrollbar-thumb: rgba(255, 255, 255, 0.2);
   }
-}
 
 * {
   box-sizing: border-box;

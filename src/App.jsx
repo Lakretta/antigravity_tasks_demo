@@ -43,15 +43,6 @@ function App() {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(nextTheme);
     document.documentElement.setAttribute('data-theme', nextTheme);
-    
-    // Also toggle the body style
-    if (nextTheme === 'dark') {
-      document.body.style.backgroundColor = '#131314';
-      document.body.style.color = '#e3e3e3';
-    } else {
-      document.body.style.backgroundColor = '#f0f4f9';
-      document.body.style.color = '#1f1f1f';
-    }
   };
 
   // Subscribe to lists
