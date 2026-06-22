@@ -24,7 +24,22 @@ export default function TaskInput({ onAddTask }) {
       marginBottom: '24px',
       boxShadow: 'var(--shadow-sm)'
     }}>
-      <Plus size={20} color="var(--text-secondary)" />
+      <button 
+        type="submit"
+        style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: newTaskTitle.trim() ? 'pointer' : 'default',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          outline: 'none'
+        }}
+        disabled={!newTaskTitle.trim()}
+      >
+        <Plus size={20} color={newTaskTitle.trim() ? "var(--color-brand)" : "var(--text-secondary)"} />
+      </button>
       <input 
         type="text" 
         placeholder="Add a task" 
