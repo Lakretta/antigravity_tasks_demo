@@ -130,3 +130,31 @@ input:focus, textarea:focus, select:focus {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
+
+/* Add task plus button */
+.add-task-plus-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-secondary);
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.add-task-plus-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--color-brand);
+}
+
+.add-task-plus-btn:active {
+  transform: scale(0.9);
+}
+
+.add-task-plus-btn.active {
+  color: var(--color-brand);
+  background-color: var(--color-brand-light);
+}

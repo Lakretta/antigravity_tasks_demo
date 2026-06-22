@@ -6,7 +6,7 @@ export default function TaskInput({ onAddTask }) {
   const inputRef = useRef(null);
 
   const onSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!newTaskTitle.trim()) return;
     const success = await onAddTask(newTaskTitle.trim());
     if (success) {
@@ -15,8 +15,10 @@ export default function TaskInput({ onAddTask }) {
   };
 
   const handlePlusClick = (e) => {
-    if (!newTaskTitle.trim()) {
-      e.preventDefault();
+    e.preventDefault();
+    if (newTaskTitle.trim()) {
+      onSubmit(e);
+    } else {
       inputRef.current?.focus();
     }
   };
@@ -27,26 +29,18 @@ export default function TaskInput({ onAddTask }) {
       alignItems: 'center',
       backgroundColor: 'var(--bg-secondary)',
       borderRadius: '12px',
-      padding: '12px 16px',
+      padding: '10px 14px',
       gap: '12px',
       marginBottom: '24px',
       boxShadow: 'var(--shadow-sm)'
     }}>
       <button 
-        type="submit"
+        type="button"
         onClick={handlePlusClick}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          outline: 'none'
-        }}
+        className={`add-task-plus-btn ${newTaskTitle.trim() ? 'active' : ''}`}
+        title="Add task"
       >
-        <Plus size={20} color={newTaskTitle.trim() ? "var(--color-brand)" : "var(--text-secondary)"} />
+        <Plus size={20} />
       </button>
       <input 
         type="text" 
@@ -63,23 +57,6 @@ export default function TaskInput({ onAddTask }) {
           outline: 'none'
         }}
       />
-      {newTaskTitle.trim() && (
-        <button 
-          type="submit"
-          style={{
-            backgroundColor: 'var(--color-brand)',
-            color: '#fff',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '500',
-            border: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          Save
-        </button>
-      )}
     </form>
   );
 }
