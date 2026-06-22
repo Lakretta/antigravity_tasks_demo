@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Plus } from 'lucide-react';
 
 export default function TaskInput({ onAddTask }) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const inputRef = useRef(null);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -10,6 +11,13 @@ export default function TaskInput({ onAddTask }) {
     const success = await onAddTask(newTaskTitle.trim());
     if (success) {
       setNewTaskTitle('');
+    }
+  };
+
+  const handlePlusClick = (e) => {
+    if (!newTaskTitle.trim()) {
+      e.preventDefault();
+      inputRef.current?.focus();
     }
   };
 
@@ -26,23 +34,24 @@ export default function TaskInput({ onAddTask }) {
     }}>
       <button 
         type="submit"
+        onClick={handlePlusClick}
         style={{
           background: 'none',
           border: 'none',
           padding: 0,
-          cursor: newTaskTitle.trim() ? 'pointer' : 'default',
+          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           outline: 'none'
         }}
-        disabled={!newTaskTitle.trim()}
       >
         <Plus size={20} color={newTaskTitle.trim() ? "var(--color-brand)" : "var(--text-secondary)"} />
       </button>
       <input 
         type="text" 
         placeholder="Add a task" 
+        ref={inputRef}
         value={newTaskTitle}
         onChange={(e) => setNewTaskTitle(e.target.value)}
         style={{
