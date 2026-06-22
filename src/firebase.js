@@ -24,12 +24,11 @@ const firebaseConfig = {
 
 const isFirebaseConfigured = !!firebaseConfig.projectId && firebaseConfig.projectId !== 'your_project_id_here';
 
-let app = null;
 let db = null;
 
 if (isFirebaseConfigured) {
   try {
-    app = initializeApp(firebaseConfig);
+    const app = initializeApp(firebaseConfig);
     const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)';
     db = getFirestore(app, databaseId);
     console.log(`Firebase successfully initialized with database: ${databaseId}`);

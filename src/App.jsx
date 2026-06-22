@@ -9,7 +9,9 @@ import { ReminderPopup, BlockerWarning } from './components/AlertBanners';
 
 function App() {
   // Theme state
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
 
   // Database lists and tasks states
   const [lists, setLists] = useState([]);
@@ -19,8 +21,12 @@ function App() {
   // AI Panel states
   const [features, setFeatures] = useState([]);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
   const [answers, setAnswers] = useState([]);
+
+  // Derive hasVoted state based on active features and localStorage
+  const activeFeaturesForVote = features.filter(f => f.status === 'voting' || f.status === 'implementing');
+  const votedFeatureId = localStorage.getItem('voted_feature_id');
+  const hasVoted = votedFeatureId === 'custom' || activeFeaturesForVote.some(f => f.id === votedFeatureId);
 
   // Reminder states
   const [activeReminder, setActiveReminder] = useState(null);
@@ -34,15 +40,12 @@ function App() {
 
   // Initialize theme
   useEffect(() => {
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    setTheme(systemTheme);
-    document.documentElement.setAttribute('data-theme', systemTheme);
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const toggleTheme = () => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
   };
 
   // Subscribe to lists
@@ -80,13 +83,6 @@ function App() {
     return () => unsubscribeVotes();
   }, []);
 
-  // Sync hasVoted state based on active features and localStorage
-  useEffect(() => {
-    const activeFeatures = features.filter(f => f.status === 'voting' || f.status === 'implementing');
-    const votedFeatureId = localStorage.getItem('voted_feature_id');
-    const hasVotedNow = activeFeatures.some(f => f.id === votedFeatureId);
-    setHasVoted(hasVotedNow);
-  }, [features]);
 
   // Background reminder checker engine
   useEffect(() => {
@@ -301,7 +297,6 @@ function App() {
     try {
       await submitVote(featureId, selectedOptionText);
       localStorage.setItem('voted_feature_id', featureId);
-      setHasVoted(true);
     } catch (err) {
       console.error('Failed to submit vote:', err);
     } finally {
@@ -315,7 +310,6 @@ function App() {
     try {
       await submitVote('custom', customText);
       localStorage.setItem('voted_feature_id', 'custom');
-      setHasVoted(true);
       return true;
     } catch (err) {
       console.error('Failed to submit custom suggestion:', err);
