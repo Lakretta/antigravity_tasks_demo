@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { subscribeToLists, saveList, deleteList, subscribeToTasks, saveTask, deleteTask, subscribeToQuestions, subscribeToAnswers, submitAnswer, dbMode } from './firebase';
+import { subscribeToLists, saveList, deleteList, subscribeToTasks, saveTask, deleteTask, subscribeToFeatures, subscribeToVotes, submitVote, dbMode } from './firebase';
 import Sidebar from './components/Sidebar';
 import AiAssistant from './components/AiAssistant';
 import TagFilters from './components/TagFilters';
@@ -17,10 +17,10 @@ function App() {
   const [tasks, setTasks] = useState([]);
   
   // AI Panel states
-  const [aiQuestions, setAiQuestions] = useState([]);
+  const [features, setFeatures] = useState([]);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
-  const [answers, setAnswers] = useState(null);
+  const [answers, setAnswers] = useState([]);
 
   // Reminder states
   const [activeReminder, setActiveReminder] = useState(null);
@@ -63,43 +63,30 @@ function App() {
     });
   }, [activeListId]);
 
-  // Subscribe to AI Sidebar questions
+  // Subscribe to AI Sidebar features
   useEffect(() => {
-    const unsubscribeQuestions = subscribeToQuestions((data) => {
-      setAiQuestions(data);
+    const unsubscribeFeatures = subscribeToFeatures((data) => {
+      setFeatures(data);
       setSubmittingAnswer(false);
     });
-    return () => unsubscribeQuestions();
+    return () => unsubscribeFeatures();
   }, []);
 
-  // Subscribe to answers for active question
+  // Subscribe to all active unprocessed votes
   useEffect(() => {
-    const activeQuestion = aiQuestions[0];
-    if (!activeQuestion) {
-      setAnswers(null);
-      setHasVoted(false);
-      return;
-    }
-
-    // Check if user has already voted on this question in local storage
-    const votedKey = 'voted_' + activeQuestion.id;
-    setHasVoted(!!localStorage.getItem(votedKey));
-
-    const unsubscribeAnswers = subscribeToAnswers(activeQuestion.id, (data) => {
+    const unsubscribeVotes = subscribeToVotes((data) => {
       setAnswers(data || []);
     });
-    return () => unsubscribeAnswers();
-  }, [aiQuestions]);
+    return () => unsubscribeVotes();
+  }, []);
 
-  // Self-healing: if answers are loaded, length is 0, but hasVoted is true, clear the stale localStorage cache
+  // Sync hasVoted state based on active features and localStorage
   useEffect(() => {
-    const activeQuestion = aiQuestions[0];
-    if (activeQuestion && answers !== null && answers.length === 0 && hasVoted) {
-      const votedKey = 'voted_' + activeQuestion.id;
-      localStorage.removeItem(votedKey);
-      setHasVoted(false);
-    }
-  }, [answers, aiQuestions, hasVoted]);
+    const activeFeatures = features.filter(f => f.status === 'voting' || f.status === 'implementing');
+    const votedFeatureId = localStorage.getItem('voted_feature_id');
+    const hasVotedNow = activeFeatures.some(f => f.id === votedFeatureId);
+    setHasVoted(hasVotedNow);
+  }, [features]);
 
   // Background reminder checker engine
   useEffect(() => {
@@ -308,31 +295,26 @@ function App() {
   };
 
   // AI Sidebar handlers
-  const handleAnswerSubmit = async (selectedOptionIndex) => {
-    if (selectedOptionIndex === null || !aiQuestions[0]) return;
+  const handleAnswerSubmit = async (featureId, selectedOptionText) => {
+    if (!featureId) return;
     setSubmittingAnswer(true);
-    const question = aiQuestions[0];
-    const optionText = question.options[selectedOptionIndex];
-    
     try {
-      await submitAnswer(question.id, selectedOptionIndex, optionText);
-      localStorage.setItem('voted_' + question.id, 'true');
+      await submitVote(featureId, selectedOptionText);
+      localStorage.setItem('voted_feature_id', featureId);
       setHasVoted(true);
     } catch (err) {
-      console.error('Failed to submit answer:', err);
+      console.error('Failed to submit vote:', err);
     } finally {
       setSubmittingAnswer(false);
     }
   };
 
   const handleCustomSubmit = async (customText) => {
-    if (!customText || !aiQuestions[0]) return false;
+    if (!customText) return false;
     setSubmittingAnswer(true);
-    const question = aiQuestions[0];
-    
     try {
-      await submitAnswer(question.id, -1, customText);
-      localStorage.setItem('voted_' + question.id, 'true');
+      await submitVote('custom', customText);
+      localStorage.setItem('voted_feature_id', 'custom');
       setHasVoted(true);
       return true;
     } catch (err) {
@@ -487,7 +469,7 @@ function App() {
       <AiAssistant
         theme={theme}
         toggleTheme={toggleTheme}
-        aiQuestions={aiQuestions}
+        features={features}
         submittingAnswer={submittingAnswer}
         hasVoted={hasVoted}
         answers={answers}

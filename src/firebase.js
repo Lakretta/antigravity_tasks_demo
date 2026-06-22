@@ -82,19 +82,11 @@ if (!localStorage.getItem('mock-tasks')) {
   ]);
 }
 
-if (!localStorage.getItem('mock-questions')) {
-  mockDb.set('mock-questions', [
-    {
-      id: 'feature_selection',
-      question: 'Which capability would you like Antigravity to build next?',
-      options: [
-        'Add reminders and due time alerts',
-        'Enable Drag & Drop task reordering',
-        'Create subtasks and lists hierarchy'
-      ],
-      active: true,
-      createdAt: Date.now()
-    }
+if (!localStorage.getItem('mock-feature-selection')) {
+  mockDb.set('mock-feature-selection', [
+    { id: 'category_tags', name: 'Category tags', status: 'voting', createdAt: Date.now() },
+    { id: 'recurring_tasks', name: 'Recurring tasks', status: 'voting', createdAt: Date.now() + 1 },
+    { id: 'task_search', name: 'Task search', status: 'voting', createdAt: Date.now() + 2 }
   ]);
 }
 
@@ -188,51 +180,50 @@ export const deleteTask = async (taskId) => {
   }
 };
 
-// 3. AI Sidebar (Questions & Answers)
-export const subscribeToQuestions = (callback) => {
+// 3. AI Sidebar (Features & Votes)
+export const subscribeToFeatures = (callback) => {
   if (db) {
-    const q = query(collection(db, 'questions'), where('active', '==', true));
+    const q = query(collection(db, 'feature_selection'));
     return onSnapshot(q, (snapshot) => {
-      const questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      questions.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
-      callback(questions);
+      const features = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      features.sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+      callback(features);
     });
   } else {
-    return mockDb.subscribe('mock-questions', [], (allQuestions) => {
-      callback(allQuestions.filter(q => q.active));
+    return mockDb.subscribe('mock-feature-selection', [], (allFeatures) => {
+      callback(allFeatures);
     });
   }
 };
 
-export const subscribeToAnswers = (questionId, callback) => {
+export const subscribeToVotes = (callback) => {
   if (db) {
-    const q = query(collection(db, 'answers'), where('questionId', '==', questionId));
+    const q = query(collection(db, 'answers'), where('processed', '==', false));
     return onSnapshot(q, (snapshot) => {
-      const answers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(answers);
+      const votes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(votes);
     });
   } else {
     return mockDb.subscribe('mock-answers', [], (allAnswers) => {
-      callback(allAnswers.filter(a => a.questionId === questionId));
+      callback(allAnswers.filter(a => !a.processed));
     });
   }
 };
 
-export const submitAnswer = async (questionId, selectedOptionIndex, selectedOptionText) => {
-  const answerData = {
-    questionId,
-    selectedOptionIndex,
+export const submitVote = async (featureId, selectedOptionText) => {
+  const voteData = {
+    featureId,
     selectedOptionText,
     submittedAt: Date.now(),
     processed: false
   };
 
   if (db) {
-    // Add answer doc to Firestore
-    await addDoc(collection(db, 'answers'), answerData);
+    // Add vote doc to Firestore
+    await addDoc(collection(db, 'answers'), voteData);
   } else {
     const answers = mockDb.get('mock-answers', []);
-    answers.push({ ...answerData, id: 'ans_' + Date.now() });
+    answers.push({ ...voteData, id: 'ans_' + Date.now() });
     mockDb.set('mock-answers', answers);
   }
 };

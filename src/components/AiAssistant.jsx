@@ -6,32 +6,39 @@ import AgentStateLog from './AgentStateLog';
 export default function AiAssistant({
   theme,
   toggleTheme,
-  aiQuestions,
+  features,
   submittingAnswer,
   hasVoted,
   answers,
   handleAnswerSubmit,
   handleCustomSubmit
 }) {
-  const activeQuestion = aiQuestions[0];
-  const totalVotes = answers ? answers.length : 0;
+  const activeFeatures = features.filter(f => f.status === 'voting' || f.status === 'implementing');
+  const votingFeatures = activeFeatures.filter(f => f.status === 'voting');
+  
+  // Calculate total votes for active features
+  const totalVotes = answers ? answers.filter(a => activeFeatures.some(f => f.id === a.featureId)).length : 0;
   
   // Calculate results if user has voted
-  const voteResults = (activeQuestion && answers) ? activeQuestion.options.map((option, idx) => {
-    const votesCount = answers.filter(a => a.selectedOptionIndex === idx).length;
+  const voteResults = answers ? activeFeatures.map((feature) => {
+    const votesCount = answers.filter(a => a.featureId === feature.id).length;
     const percentage = totalVotes > 0 ? Math.round((votesCount / totalVotes) * 100) : 0;
     return {
-      text: option,
+      id: feature.id,
+      text: feature.name,
+      status: feature.status,
       votes: votesCount,
       percent: percentage
     };
   }) : [];
 
-  // Extract custom ideas from answers
-  const customIdeas = answers ? answers.filter(a => a.selectedOptionIndex === -1) : [];
+  // Extract custom ideas from answers (featureId === 'custom')
+  const customIdeas = answers ? answers.filter(a => a.featureId === 'custom') : [];
 
   // Get the last submitted answer text
-  const processedOrPendingText = (activeQuestion && answers && answers.length > 0) ? answers[answers.length - 1].selectedOptionText : '';
+  const processedOrPendingText = (answers && answers.length > 0) ? answers[answers.length - 1].selectedOptionText : '';
+
+  const questionText = "Which productivity feature would you like Antigravity to build next?";
 
   return (
     <section style={{
@@ -49,7 +56,7 @@ export default function AiAssistant({
       {/* Content body */}
       <div style={{ flex: 1, padding: '24px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }} className="scroller">
         
-        {activeQuestion ? (
+        {activeFeatures.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
             
             {/* Question Card */}
@@ -63,7 +70,7 @@ export default function AiAssistant({
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <span style={{ color: 'var(--color-brand)', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center' }}>★</span>
                 <p style={{ fontSize: '14px', lineHeight: '1.45', fontWeight: '500', color: 'var(--text-primary)', textAlign: 'left', margin: 0 }}>
-                  {activeQuestion.question}
+                  {questionText}
                 </p>
               </div>
               
@@ -84,9 +91,14 @@ export default function AiAssistant({
               />
             ) : (
               <PollChoices
-                options={activeQuestion.options}
+                options={votingFeatures.map(f => f.name)}
                 submittingAnswer={submittingAnswer}
-                onSubmitAnswer={handleAnswerSubmit}
+                onSubmitAnswer={(selectedIdx) => {
+                  const selectedFeature = votingFeatures[selectedIdx];
+                  if (selectedFeature) {
+                    handleAnswerSubmit(selectedFeature.id, selectedFeature.name);
+                  }
+                }}
                 onSubmitCustom={handleCustomSubmit}
               />
             )}

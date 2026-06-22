@@ -4,6 +4,7 @@ import re
 import json
 import urllib.request
 import urllib.parse
+import time
 
 def load_env():
     env_vars = {}
@@ -61,8 +62,6 @@ def fetch_unprocessed_answers(project_id, database_id='(default)'):
         print("Error: VITE_FIREBASE_PROJECT_ID not set in .env")
         return []
         
-    # Query answers collection
-    # Note: Using Firestore StructuredQuery REST endpoint or simple list depending on needs
     url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/answers"
     result = make_firestore_request(url)
     
@@ -81,10 +80,10 @@ def fetch_unprocessed_answers(project_id, database_id='(default)'):
             answers.append({
                 'id': doc_id,
                 'path': name,
-                'questionId': doc_fields.get('questionId', {}).get('stringValue', ''),
-                'selectedOptionIndex': int(doc_fields.get('selectedOptionIndex', {}).get('integerValue', 0)),
+                'featureId': doc_fields.get('featureId', {}).get('stringValue', ''),
                 'selectedOptionText': doc_fields.get('selectedOptionText', {}).get('stringValue', ''),
-                'submittedAt': int(doc_fields.get('submittedAt', {}).get('integerValue', 0))
+                'submittedAt': int(doc_fields.get('submittedAt', {}).get('integerValue', 0)),
+                'processed': processed
             })
             
     # Sort by submittedAt ascending
@@ -92,11 +91,9 @@ def fetch_unprocessed_answers(project_id, database_id='(default)'):
     return answers
 
 def mark_answer_processed(project_id, doc_path, answer_data):
-    # Update processed to true using patch
     path = doc_path if doc_path.startswith('/') else f"/{doc_path}"
     url = f"https://firestore.googleapis.com/v1{path}?updateMask.fieldPaths=processed"
     
-    # We must rebuild the fields dictionary in Firestore REST structure
     fields = {}
     for k, v in answer_data.items():
         if k in ['id', 'path']:
@@ -116,59 +113,46 @@ def mark_answer_processed(project_id, doc_path, answer_data):
     
     return make_firestore_request(url, data=doc_payload, method='PATCH')
 
-def post_next_question(project_id, question_id, question_text, options, database_id='(default)'):
+def post_feature(project_id, feature_id, feature_name, status='voting', database_id='(default)'):
     if not project_id:
         return None
-    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions/{question_id}"
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/feature_selection/{feature_id}"
     
     doc_payload = {
         'fields': {
-            'id': {'stringValue': question_id},
-            'question': {'stringValue': question_text},
-            'options': {
-                'arrayValue': {
-                    'values': [{'stringValue': opt} for opt in options]
-                }
-            },
-            'active': {'booleanValue': True},
-            'status': {'stringValue': 'voting'}
+            'id': {'stringValue': feature_id},
+            'name': {'stringValue': feature_name},
+            'status': {'stringValue': status},
+            'createdAt': {'integerValue': str(int(time.time() * 1000))}
         }
     }
     
-    import time
-    doc_payload['fields']['createdAt'] = {'integerValue': str(int(time.time() * 1000))}
-    
-    return make_firestore_request(url, data=doc_payload, method='PATCH') # PATCH allows overwrite if exists
+    return make_firestore_request(url, data=doc_payload, method='PATCH')
 
-def fetch_active_question(project_id, database_id='(default)'):
+def fetch_active_features(project_id, database_id='(default)'):
     if not project_id:
-        return None
-    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions"
+        return []
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/feature_selection"
     result = make_firestore_request(url)
     if not result or 'documents' not in result:
-        return None
+        return []
     
+    features = []
     for doc in result['documents']:
         fields = doc.get('fields', {})
-        active = fields.get('active', {}).get('booleanValue', False)
-        if active:
-            # Parse options
-            options_val = fields.get('options', {}).get('arrayValue', {}).get('values', [])
-            options = [opt.get('stringValue', '') for opt in options_val]
-            # Parse implemented features list
-            implemented_val = fields.get('implemented', {}).get('arrayValue', {}).get('values', [])
-            implemented = [opt.get('stringValue', '') for opt in implemented_val]
-            return {
+        status = fields.get('status', {}).get('stringValue', '')
+        if status in ['voting', 'implementing']:
+            features.append({
                 'id': doc.get('name', '').split('/')[-1],
                 'path': doc.get('name', ''),
-                'question': fields.get('question', {}).get('stringValue', ''),
-                'options': options,
-                'implemented': implemented,
-                'status': fields.get('status', {}).get('stringValue', 'voting')
-            }
-    return None
+                'name': fields.get('name', {}).get('stringValue', ''),
+                'status': status,
+                'createdAt': int(fields.get('createdAt', {}).get('integerValue', 0))
+            })
+    features.sort(key=lambda x: x['createdAt'])
+    return features
 
-def fetch_answers_for_question(project_id, question_id, database_id='(default)'):
+def fetch_answers_for_feature(project_id, feature_id, database_id='(default)'):
     if not project_id:
         return []
     url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/answers"
@@ -179,13 +163,12 @@ def fetch_answers_for_question(project_id, question_id, database_id='(default)')
     answers = []
     for doc in result['documents']:
         fields = doc.get('fields', {})
-        q_id = fields.get('questionId', {}).get('stringValue', '')
-        if q_id == question_id:
+        f_id = fields.get('featureId', {}).get('stringValue', '')
+        if f_id == feature_id:
             answers.append({
                 'id': doc.get('name', '').split('/')[-1],
                 'path': doc.get('name', ''),
-                'questionId': q_id,
-                'selectedOptionIndex': int(fields.get('selectedOptionIndex', {}).get('integerValue', 0)),
+                'featureId': f_id,
                 'selectedOptionText': fields.get('selectedOptionText', {}).get('stringValue', ''),
                 'submittedAt': int(fields.get('submittedAt', {}).get('integerValue', 0)),
                 'processed': fields.get('processed', {}).get('booleanValue', False)
@@ -193,90 +176,19 @@ def fetch_answers_for_question(project_id, question_id, database_id='(default)')
     answers.sort(key=lambda x: x['submittedAt'])
     return answers
 
-def update_question_status(project_id, question_id, active, status, database_id='(default)'):
+def update_feature_status(project_id, feature_id, status, database_id='(default)'):
     if not project_id:
         return None
-    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions/{question_id}?updateMask.fieldPaths=active&updateMask.fieldPaths=status"
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/feature_selection/{feature_id}?updateMask.fieldPaths=status"
     doc_payload = {
         'fields': {
-            'active': {'booleanValue': active},
             'status': {'stringValue': status}
         }
     }
     return make_firestore_request(url, data=doc_payload, method='PATCH')
 
-def replenish_and_complete_question(project_id, question_id, implemented_feature, database_id='(default)'):
-    if not project_id:
-        return None
-    
-    # 1. Fetch current question details
-    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/questions/{question_id}"
-    question_doc = make_firestore_request(url)
-    if not question_doc:
-        print(f"[SYNC ERROR] Question '{question_id}' not found.")
-        return None
-        
-    fields = question_doc.get('fields', {})
-    
-    options_val = fields.get('options', {}).get('arrayValue', {}).get('values', [])
-    options = [opt.get('stringValue', '') for opt in options_val]
-    
-    implemented_val = fields.get('implemented', {}).get('arrayValue', {}).get('values', [])
-    implemented = [opt.get('stringValue', '') for opt in implemented_val]
-    
-    # 2. Update options and implemented lists
-    # Remove from options (case-insensitive)
-    new_options = [opt for opt in options if opt.strip().lower() != implemented_feature.strip().lower()]
-    
-    # Add to implemented list if not already there
-    if not any(imp.strip().lower() == implemented_feature.strip().lower() for imp in implemented):
-        implemented.append(implemented_feature)
-        
-    # 3. Replenish options if count < 3
-    import sys
-    import os
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../generate_new_feature/scripts')))
-    try:
-        from feature_pool import get_next_available_feature
-    except ImportError as e:
-        print(f"[SYNC ERROR] Could not import feature_pool: {e}")
-        # Inline fallback list
-        def get_next_available_feature(curr, imp):
-            pool = ["Calendar view", "Export tasks", "Recurring tasks", "Task search", "Category tags", "Task notes", "Shared collaboration"]
-            used = set(c.lower() for c in curr) | set(i.lower() for i in imp)
-            for p in pool:
-                if p.lower() not in used:
-                    return p
-            return f"Custom Feature Addition v{len(imp) + 1}"
-            
-    while len(new_options) < 3:
-        next_feat = get_next_available_feature(new_options, implemented)
-        print(f"[SYNC] Replenishing active options with: '{next_feat}'")
-        new_options.append(next_feat)
-        
-    # 4. Patch document in Firestore
-    patch_url = f"{url}?updateMask.fieldPaths=options&updateMask.fieldPaths=implemented&updateMask.fieldPaths=active&updateMask.fieldPaths=status"
-    
-    doc_payload = {
-        'fields': {
-            'options': {
-                'arrayValue': {
-                    'values': [{'stringValue': opt} for opt in new_options]
-                }
-            },
-            'implemented': {
-                'arrayValue': {
-                    'values': [{'stringValue': imp} for imp in implemented]
-                }
-            },
-            'active': {'booleanValue': True},
-            'status': {'stringValue': 'voting'}
-        }
-    }
-    
-    return make_firestore_request(patch_url, data=doc_payload, method='PATCH')
-
-
+def complete_feature(project_id, feature_id, database_id='(default)'):
+    return update_feature_status(project_id, feature_id, status='implemented', database_id=database_id)
 
 def main():
     project_id = get_project_id()
@@ -284,57 +196,22 @@ def main():
     if not project_id:
         print("\n=== OFFLINE DEMO MODE ===")
         print("VITE_FIREBASE_PROJECT_ID is not configured in .env.")
-        print("The browser web app will run in offline LocalStorage mode.")
-        print("Create a Firebase project and fill .env to enable synchronization.")
         print("=========================\n")
         return
         
     print(f"Connecting to Firestore Project: {project_id} (Database: {database_id})...")
     
-    # 1. Show active question & vote tally
-    active_q = fetch_active_question(project_id, database_id)
-    if active_q:
-        print("\n=== ACTIVE QUESTION ===")
-        print(f"Question: {active_q['question']}")
-        print(f"ID:       {active_q['id']}")
-        print(f"Status:   {active_q['status']}")
-        
-        votes = fetch_answers_for_question(project_id, active_q['id'], database_id)
-        print(f"Total Votes: {len(votes)}")
-        vote_counts = {opt: 0 for opt in active_q['options']}
-        for ans in votes:
-            opt_text = ans['selectedOptionText']
-            if opt_text in vote_counts:
-                vote_counts[opt_text] += 1
-            else:
-                vote_counts[opt_text] = 1 # custom options
-                
-        for opt_text, count in vote_counts.items():
-            print(f"  - '{opt_text}': {count} vote(s)")
+    active_feats = fetch_active_features(project_id, database_id)
+    if active_feats:
+        print("\n=== ACTIVE FEATURES ===")
+        for f in active_feats:
+            print(f"Feature: {f['name']} (ID: {f['id']})")
+            print(f"  Status: {f['status']}")
+            votes = fetch_answers_for_feature(project_id, f['id'], database_id)
+            print(f"  Total Votes: {len(votes)}")
         print("=======================\n")
     else:
-        print("\nNo active question found in Firestore.\n")
-
-    # 2. Show unprocessed user choices
-    answers = fetch_unprocessed_answers(project_id, database_id)
-    
-    if not answers:
-        print("No new unprocessed user answers found.")
-        return
-        
-    print(f"Found {len(answers)} unprocessed user choice(s):")
-    for i, ans in enumerate(answers, 1):
-        print(f"{i}. Question ID: {ans['questionId']}")
-        print(f"   Selection: [{ans['selectedOptionIndex']}] {ans['selectedOptionText']}")
-        print(f"   Submitted at: {ans['submittedAt']}")
-        print("-" * 40)
-        
-    # Example action: Process the first one
-    ans = answers[0]
-    confirm = input("Would you like to mark this answer as processed? (y/N): ")
-    if confirm.lower() == 'y':
-        mark_answer_processed(project_id, ans['path'], ans)
-        print("Marked as processed in Firestore.")
+        print("\nNo active features found in Firestore.\n")
 
 if __name__ == '__main__':
     main()
