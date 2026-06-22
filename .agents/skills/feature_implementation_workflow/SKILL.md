@@ -1,5 +1,5 @@
 ---
-name: syncing-feature-feedback
+name: feature-implementation-workflow
 description: >-
   Synchronizes user feature feedback and design selections between Firestore and local development, posting new design questions. Use when pulling unprocessed choices, creating corresponding task tickets, or updating current iteration questions. Don't use for general database migrations.
 ---
@@ -37,9 +37,13 @@ python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action commen
 python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transition --issue KAN-XXX --transition Done
 ```
 
-## State Management Rules
+## State Management & Implementation Rules
 
-1. Always mark an answer as `processed: true` in Firestore once you begin implementing it to avoid reading the same selection repeatedly.
-2. Formulate only one active question at a time to prevent user confusion.
-3. If no config variables are present, output local JSON mocks to test the integration state.
-4. After feature implementation, the corresponding Jira task must be transitioned to 'Done' and the contents of `walkthrough.md` must be added as a comment to the task.
+1. **Always plan and obtain approval**: Do not implement a selected feature immediately. Instead, first create/update `implementation_plan.md` detailing the design, file modifications, and validation steps. Wait for explicit user review and approval before writing code.
+2. **Execute and test in visible browser**: Completely implement the feature and run end-to-end testing in a visible browser (non-headless mode) using:
+   ```bash
+   node .agents/skills/end_to_end_testing/scripts/test_runner.cjs --url http://localhost:5173
+   ```
+3. **Always mark processed**: Mark the answers collection selection as `processed: true` in Firestore once you start the implementation to avoid reading the selection repeatedly.
+4. **Transition and comment Jira task**: Once verified and deployed to Firebase Hosting, transition the corresponding Jira task to Done and post the walkthrough contents as a comment.
+
