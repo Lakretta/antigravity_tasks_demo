@@ -59,7 +59,7 @@ def main():
                         help="Action to perform (create issue, post comment, transition state)")
     
     # Create arguments
-    parser.add_argument("--project", default="KAN", help="Jira Project Key (e.g. PROJ)")
+    parser.add_argument("--project", default="AGENT", help="Jira Project Key (e.g. PROJ)")
     parser.add_argument("--summary", help="Issue Title/Summary")
     parser.add_argument("--desc", help="Issue Description")
     parser.add_argument("--type", default="Task", help="Issue Type (Task, Story, Bug)")

@@ -53,12 +53,12 @@ python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --project PROJ 
 
 #### Post Comment:
 ```bash
-python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action comment --issue KAN-123 --comment "Your comment text"
+python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action comment --issue AGENT-123 --comment "Your comment text"
 ```
 
 #### Transition Issue (e.g. to Done):
 ```bash
-python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transition --issue KAN-123 --transition Done
+python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transition --issue AGENT-123 --transition Done
 ```
 
 #### Environment Variables Config

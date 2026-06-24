@@ -30,10 +30,10 @@ Run `python3 .agents/workflows/feature_implementation_workflow/scripts/fetch_use
 Once a feature has been implemented, verified, and documented in `walkthrough.md`, add the walkthrough text as a comment on the Jira issue and transition it to Done using the helper script:
 ```bash
 # Add walkthrough comment
-python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action comment --issue KAN-XXX --comment "$(cat walkthrough.md)"
+python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action comment --issue AGENT-XXX --comment "$(cat walkthrough.md)"
 
 # Transition issue to Done
-python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transition --issue KAN-XXX --transition Done
+python3 .agents/skills/jira_items_manager/scripts/jira_helper.py --action transition --issue AGENT-XXX --transition Done
 ```
 
 ## State Management & Implementation Rules
